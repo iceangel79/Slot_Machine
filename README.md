@@ -1,13 +1,9 @@
 
-# <Slot_Machine>
+# Slot Machine
 
-Slot-Machine-Simulator: Eine Webapplikation, mit der sich ein Spielautomat frei konfigurieren lässt (Symbole, Walzenbelegung, Gewinnkombinationen). Über eine Spieloberfläche können einzelne oder automatisierte Spins ausgeführt werden, die vollständig in einer Datenbank protokolliert werden. Eine dritte Ansicht wertet die gesammelten Spins aus und stellt die konfigurierten Soll-Wahrscheinlichkeiten den effektiv erzielten Trefferquoten und der Auszahlungsquote gegenüber.
+Slot-Machine-Simulator: 
+Eine Webapplikation, mit der sich ein Spielautomat frei konfigurieren lässt (Symbole, Walzenbelegung, Gewinnkombinationen). Über eine Spieloberfläche können einzelne oder automatisierte Spins ausgeführt werden, die vollständig in einer Datenbank protokolliert werden. Eine dritte Ansicht wertet die gesammelten Spins aus und stellt die konfigurierten Soll-Wahrscheinlichkeiten den effektiv erzielten Trefferquoten und der Auszahlungsquote gegenüber.
 
-You can use [GitHub markdown
-notation](https://docs.github.com/en/github/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax)
-or [GitLab markdown notation](https://docs.gitlab.com/ee/user/markdown.html) in
-case you are using one of these platforms. This will give a nicely formatted
-documentation when looking at your project online.
 
 ## Get started
 
