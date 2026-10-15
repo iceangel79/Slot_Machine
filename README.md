@@ -1,8 +1,7 @@
-!! Change this document for your own project by removing the placeholder text, adding your own text, adding helpful sections etc. etc. !!
 
-# <Project Title>
+# <Slot_Machine>
 
-In a few sentences describe what your project is trying to solve.
+Slot-Machine-Simulator: Eine Webapplikation, mit der sich ein Spielautomat frei konfigurieren lässt (Symbole, Walzenbelegung, Gewinnkombinationen). Über eine Spieloberfläche können einzelne oder automatisierte Spins ausgeführt werden, die vollständig in einer Datenbank protokolliert werden. Eine dritte Ansicht wertet die gesammelten Spins aus und stellt die konfigurierten Soll-Wahrscheinlichkeiten den effektiv erzielten Trefferquoten und der Auszahlungsquote gegenüber.
 
 You can use [GitHub markdown
 notation](https://docs.github.com/en/github/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax)
