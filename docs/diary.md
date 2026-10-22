@@ -14,6 +14,9 @@ decision0001 erstellt bezüglich docker und/oder render.com
 
 hello.py erstellt als ersten lauffähigen Prototyp. mit localhost:8000 getestet, damit im Anschluss render.com getestet werden konnte.
 
+docker desktop installiert und ebenfalls getestet
+
+
 
 
 
