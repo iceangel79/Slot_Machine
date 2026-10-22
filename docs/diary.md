@@ -16,7 +16,7 @@ hello.py erstellt als ersten lauffähigen Prototyp. mit localhost:8000 getestet,
 
 docker desktop installiert und ebenfalls getestet
 
-
+render.com aufgesetzt und mit der git repo verbunden. automatisches deployment funktioniert. die einfache app funktioniert ebenfalls.
 
 
 
