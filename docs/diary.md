@@ -79,3 +79,5 @@ Grundregel für das Projekt: immer die pragmatische, einfachere Variante wählen
 
 aus der Diskussion mit der KI weitere decisions festgehalten.
 
+Architecure.md erstellt und mittels mermaid grafisch dargestellt. (Erstes Mermaid Diagramm überhaupt für mich)
+
