@@ -1,6 +1,6 @@
 # Decision Docker vs Render.com
 
-Date: 22.10.2026
+Date: 2026-10-22
 
 ## Status
 
