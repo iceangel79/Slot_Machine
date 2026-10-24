@@ -56,9 +56,9 @@ elements should be easy to understand.
  * For WSGI/ASGI start with either Gunicorn or Uvicorn depending on the web
    framework used.
  * Document architectural design decisions that were discussed with the
-   developers in the folder `docs/decisions`. Use a new file for every decision
-   and use a continuous numbering scheme in the form
-   `0001-framework-choice.md`.
+   developers in the folder `docs/decisions`. Use a new file for every
+   decision, named `NNNN-YYYYMMDD-short-title.md` with continuous numbering,
+   for example `0003-20261101-database-choice.md`.
 
 ## Educational collaboration
 
