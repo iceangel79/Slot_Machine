@@ -6,6 +6,20 @@ freely.
 
  * We use `uv` for any Python related tasks
 
+ ## Language
+
+ * All code, comments, docstrings, commit messages, decision records and
+   general documentation are written in English.
+ * The development diary in `docs/diary.md` is written in German. Keep new
+   entries in German as well.
+ * Swiss spelling conventions apply to all German text: use `ss` instead of
+   `ß` and avoid Germany-specific wording.
+ * Do not mix languages within a single file. Established English technical
+   terms (deployment, commit, container) may stay as-is inside German text
+   where no natural German equivalent exists.
+ * When editing an existing file, keep its current language. Only switch
+   languages when the developers explicitly ask for it.
+
 ## Files and directories
 
  * Check `docs/directories.md` for the recommended directory structure.
@@ -60,3 +74,4 @@ placement questions, and decision records in this project.
 
 Decision records for this project belong in `docs/decisions` and should be
 based on `docs/decision-template.md`.
+
