@@ -87,12 +87,18 @@ Architecure.md erstellt und mittels mermaid grafisch dargestellt. (Erstes Mermai
 
 ## 25.10.2026
 
+aufräumen: hello.py entfernt.
+
 Account bei neon (database service) erstellt und connection-string erhalten.
 String in .env eingerichtet und sichergestellt, dass .env von gitignore beachtet wird.
 String in render.com als environment variable eingerichtet.
 
-Walking Skeleton: minimale App mit einem Endpoint, einer DB-Tabelle und einer Seite.
+Walking Skeleton (Schritt 5): minimale App mit einem Endpoint, einer DB-Tabelle und einer Seite.
 Mit Claude das "WS" erstellt und lokal gestartet. in Neon wurden die beiden Tables erfolgreich erstellt. auf localhost wird im browser der entsprechende erfolgt ausgewiesen.
+Testing auf Render.com mit autodeploy war ebenfalls erfolgreich!
+
+Continuous Integration (Schritt 6): GitHub Actions mit Linter (ruff) und Tests (pytest). Es wurden Tests für die Endpunkte und Tests für die Datenbankanbindung erstellt. Die Tests wurden erfolgreich durchgeführt.
+
 
 
 
