@@ -30,9 +30,6 @@ import math
 from collections import Counter
 from itertools import product
 
-from collections import Counter
-from itertools import product
-
 SYMBOLS = ("CHERRY", "LEMON", "BELL", "BAR", "SEVEN", "BLANK")
 REEL_COUNT = 3
 BET = 1
@@ -200,6 +197,7 @@ def theoretical_stats(config):
         "hit_frequency": sum(rule_probabilities),
         "rtp": sum(rule["rtp_contribution"] for rule in rules) / BET,
     }
+
 
 def expected_range(theoretical, std_dev, spins, upper_limit=None):
     """Return (low, high): the range in which the actual value lies with 95 %

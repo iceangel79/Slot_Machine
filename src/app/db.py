@@ -111,7 +111,6 @@ def insert_spins(configuration_id, results, rng_source):
             )
 
 
-
 def spins_grouped_by_symbols(configuration_id, rng_source=None):
     """Return the spins of one configuration, grouped by their three symbols.
 
@@ -130,4 +129,3 @@ def spins_grouped_by_symbols(configuration_id, rng_source=None):
             """,
             (configuration_id, rng_source, rng_source),
         ).fetchall()
-

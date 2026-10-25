@@ -147,6 +147,7 @@ def create_spins():
         spins=results,
     ), 201
 
+
 @app.get("/api/configurations/<int:configuration_id>/analysis")
 def analyse_configuration(configuration_id):
     """Actual vs. theoretical values of the stored spins (decision 0018).
@@ -167,7 +168,6 @@ def analyse_configuration(configuration_id):
         source=source,
         **game.analyse(configuration, rows),
     )
-
 
 
 # Create the tables and the default configuration on startup (decisions 0010

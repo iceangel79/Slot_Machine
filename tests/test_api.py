@@ -173,8 +173,6 @@ def test_invalid_configuration_is_not_saved():
     assert client.post("/api/configurations", json=body).status_code == 400
 
 
-
-
 # --- analysis (decision 0018) ---
 
 

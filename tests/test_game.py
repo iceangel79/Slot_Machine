@@ -4,9 +4,6 @@ import copy
 import random
 from itertools import product
 
-import copy
-from itertools import product
-
 import pytest
 
 from app import game, rng
@@ -222,8 +219,6 @@ def test_reel_with_31_positions_is_rejected():
         game.validate_config(config)
 
 
-
-
 # --- analysis (decision 0018) ---
 
 
@@ -327,4 +322,3 @@ def test_simulated_spins_lie_within_the_expected_range():
     assert analysis["spins"] == 20_000
     assert analysis["rtp"]["in_range"]
     assert analysis["hit_frequency"]["in_range"]
-    
