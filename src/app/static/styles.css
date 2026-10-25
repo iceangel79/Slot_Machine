@@ -1,0 +1,86 @@
+/* Styles shared by all pages. */
+
+body {
+    font-family: system-ui, sans-serif;
+    max-width: 40rem;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+section {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    /* wide tables scroll inside the section on small screens */
+    overflow-x: auto;
+}
+
+.reels {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin: 1rem 0;
+}
+
+.reel {
+    width: 5rem;
+    height: 5rem;
+    font-size: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #333;
+    border-radius: 8px;
+}
+
+.win {
+    color: green;
+    font-weight: bold;
+}
+
+.error {
+    color: #b00;
+}
+
+button {
+    padding: 0.4rem 1rem;
+    margin-right: 0.5rem;
+}
+
+label {
+    margin-right: 1rem;
+}
+
+input {
+    width: 6rem;
+}
+
+small {
+    color: #666;
+}
+
+nav a {
+    margin-right: 1rem;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+th,
+td {
+    padding: 0.25rem 0.5rem;
+    text-align: left;
+}
+
+td input,
+td select {
+    width: auto;
+    max-width: 8rem;
+}
+
+.warning {
+    color: #b60;
+    font-weight: bold;
+}
