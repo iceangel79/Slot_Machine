@@ -45,6 +45,7 @@ def get_configuration(configuration_id):
         return jsonify(error="configuration not found"), 404
     return jsonify(configuration)
 
+
 def _config_from_request(data):
     """Take reel strips and paytable from a request body and validate them.
 
@@ -86,7 +87,8 @@ def create_configuration():
 
     configuration_id = db.insert_configuration(name.strip(), config)
     return jsonify(db.get_configuration(configuration_id)), 201
-    
+
+
 def _is_int(value):
     # bool is a subclass of int in Python, so True would pass as 1.
     return isinstance(value, int) and not isinstance(value, bool)

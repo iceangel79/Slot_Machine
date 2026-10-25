@@ -32,7 +32,6 @@ def check_connection():
         conn.execute("SELECT 1")
 
 
-
 def ensure_default_configuration(name, config):
     """Store the default configuration if no configuration exists yet."""
     with get_connection() as conn:
@@ -66,6 +65,7 @@ def get_configuration(configuration_id):
             (configuration_id,),
         ).fetchone()
 
+
 def insert_configuration(name, config):
     """Store a new configuration and return its id.
 
@@ -81,6 +81,7 @@ def insert_configuration(name, config):
             (name, Jsonb(config["reel_strips"]), Jsonb(config["paytable"])),
         ).fetchone()
     return row["id"]
+
 
 def insert_spins(configuration_id, results, rng_source):
     """Store spins (results of game.spin) in one transaction.

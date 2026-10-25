@@ -165,7 +165,6 @@ def test_python_stop_positions_are_within_strips():
         assert 0 <= stops[2] < 7
 
 
-
 def test_manual_stop_positions_use_random_org(monkeypatch):
     monkeypatch.setattr(rng, "random_org_stop_positions", lambda lengths: [1, 2, 3])
 
@@ -193,6 +192,7 @@ def test_unexpected_random_org_answer_is_rejected(text):
     with pytest.raises(ValueError):
         rng.parse_random_org_number(text, 20)
 
+
 # --- default configuration ---
 
 
@@ -204,7 +204,6 @@ def test_default_config_is_valid_and_favours_the_house():
     assert stats["rtp"] == pytest.approx(0.9098, abs=0.0001)
     assert stats["hit_frequency"] == pytest.approx(0.2835, abs=0.0001)
 
-    
 
 def test_reel_with_30_positions_is_valid():
     config = broken(lambda c: c["reel_strips"].__setitem__(0, ["BLANK"] * 30))
@@ -217,5 +216,3 @@ def test_reel_with_31_positions_is_rejected():
 
     with pytest.raises(ValueError):
         game.validate_config(config)
-
-        

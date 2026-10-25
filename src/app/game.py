@@ -58,6 +58,7 @@ DEFAULT_CONFIG = {
     ],
 }
 
+
 def validate_config(config):
     """Check a configuration. Raises ValueError with a readable message."""
     if not isinstance(config, dict):

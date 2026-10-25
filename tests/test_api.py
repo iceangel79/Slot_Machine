@@ -119,7 +119,6 @@ def test_spin_with_unknown_configuration_returns_404():
 
     assert response.status_code == 404
 
-    
 
 # --- configuration editor (decision 0016) ---
 
