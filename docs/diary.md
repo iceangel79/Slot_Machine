@@ -93,11 +93,25 @@ Account bei neon (database service) erstellt und connection-string erhalten.
 String in .env eingerichtet und sichergestellt, dass .env von gitignore beachtet wird.
 String in render.com als environment variable eingerichtet.
 
+---
+
 Walking Skeleton (Schritt 5): minimale App mit einem Endpoint, einer DB-Tabelle und einer Seite.
 Mit Claude das "WS" erstellt und lokal gestartet. in Neon wurden die beiden Tables erfolgreich erstellt. auf localhost wird im browser der entsprechende erfolgt ausgewiesen.
 Testing auf Render.com mit autodeploy war ebenfalls erfolgreich!
 
+---
+
 Continuous Integration (Schritt 6): GitHub Actions mit Linter (ruff) und Tests (pytest). Es wurden Tests für die Endpunkte und Tests für die Datenbankanbindung erstellt. Die Tests wurden erfolgreich durchgeführt.
+Bewusster Fehler eingebaut, "assert b"Slot Machine Simulator" in response.data" geändert auf "assert b"Fehler" in response.data". Dies führte zu einem fehlerhaften Testresultat.
+im Anschluss korrigiert und "assert b"Fehler" in response.data" geändert auf "assert b"Fehler" in response.data" .
+verstanden, dass ci.yml automatische tests nach dem commit auf github durchführt. dies dient vor allem auch dazu, dass wenn verschiedene personen an etwas arbeiten, diese nicht unwissentlich fehlerhafte Code teile ins Hauptsystem bringen.
+
+Fazit zu Schritt 6: Es gibt aktuell zwei Tests, einen für die Startseite und einen für den Health-Check inklusive DB-Verbindung. «Tests für die Datenbankanbindung» klingt nach mehr, als vorhanden ist. Bei der Präsentation könnte jemand nachfragen.
+
+---
+
+
+
 
 
 
