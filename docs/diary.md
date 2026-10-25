@@ -122,6 +122,9 @@ Stolperstein: app/__init__.py hat beim Import die Tabellen erstellt. Jeder Impor
 
 Ergebnis: 24 neue Tests laufen ohne Datenbank. Ein Test prüft, dass die theoretische Berechnung dasselbe ergibt wie das Durchprobieren aller Stoppositionen.
 
+---
+
+Feature: Spielen (Schritt 8):
 
 
 
