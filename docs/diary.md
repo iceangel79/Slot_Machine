@@ -34,6 +34,8 @@ anhand "SW04 - Technologien - Auswahl und Empfehlungen.pdf", die anzuwendenden T
 
 überlegungen für spätere "echte" Projekte, dass man dies auch eigenständig auf einem Raspberry Pi hosten könnte. (vorteile: kostengünstig, keine cloud-abhängigkeit, datenschutz). 
 
+---
+
 ## 24.10.2026
 
 Vorgehen bis zur lauffähigen Applikation besprochen und festgelegt. Die folgende
@@ -80,4 +82,18 @@ Grundregel für das Projekt: immer die pragmatische, einfachere Variante wählen
 aus der Diskussion mit der KI weitere decisions festgehalten.
 
 Architecure.md erstellt und mittels mermaid grafisch dargestellt. (Erstes Mermaid Diagramm überhaupt für mich)
+
+---
+
+## 25.10.2026
+
+Account bei neon (database service) erstellt und connection-string erhalten.
+String in .env eingerichtet und sichergestellt, dass .env von gitignore beachtet wird.
+String in render.com als environment variable eingerichtet.
+
+Walking Skeleton: minimale App mit einem Endpoint, einer DB-Tabelle und einer Seite.
+Mit Claude das "WS" erstellt und lokal gestartet. in Neon wurden die beiden Tables erfolgreich erstellt. auf localhost wird im browser der entsprechende erfolgt ausgewiesen.
+
+
+
 

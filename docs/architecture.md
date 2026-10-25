@@ -82,6 +82,7 @@ Notes:
 
 | Method | Path | Purpose |
 |---|---|---|
+| GET | `/api/health` | Check that the backend runs and the database is reachable |
 | GET | `/api/configurations` | List all configurations |
 | GET | `/api/configurations/<id>` | One configuration |
 | POST | `/api/configurations` | Save a new configuration |

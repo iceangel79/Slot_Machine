@@ -25,7 +25,7 @@ detailed by this record.
 
 ## Decision
 
-Option 1, Flask, served by Gunicorn. Decided by Adrian.
+Option 1, Flask, served by Gunicorn.
 
 ## Reasons
 

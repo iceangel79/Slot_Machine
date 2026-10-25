@@ -26,7 +26,7 @@ for a slot machine (real casinos also use certified software generators).
 
 ## Decision
 
-Option 4. Decided by Adrian.
+Option 4. 
 
 ## Reasons
 

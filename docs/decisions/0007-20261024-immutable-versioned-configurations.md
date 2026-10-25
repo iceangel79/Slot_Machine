@@ -25,8 +25,7 @@ simulations can produce a very large number of spins.
 
 ## Decision
 
-Option 2, a normalised `configurations` table with immutable entries. Decided
-by Adrian.
+Option 2, a normalised `configurations` table with immutable entries.
 
 ## Reasons
 

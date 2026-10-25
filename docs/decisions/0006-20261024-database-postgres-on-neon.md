@@ -26,7 +26,7 @@ restart. Free PostgreSQL databases on Render expire after 30 days.
 
 ## Decision
 
-Option 3, PostgreSQL hosted on Neon. Decided by Adrian.
+Option 3, PostgreSQL hosted on Neon. 
 
 ## Reasons
 

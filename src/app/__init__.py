@@ -1,13 +1,32 @@
-from pathlib import Path
+"""Flask application: serves the static frontend and the JSON API."""
 
-STATIC_DIR = Path(__file__).parent / "static"
-INDEX_HTML = STATIC_DIR / "index.html"
+from dotenv import load_dotenv
+from flask import Flask, jsonify
+
+from . import db
+
+# Reads DATABASE_URL from the local .env file. On Render there is no .env file;
+# the variable is set in the environment and load_dotenv() leaves it untouched.
+load_dotenv()
+
+app = Flask(__name__, static_folder="static", static_url_path="")
 
 
-def app(environ, start_response):
-    html_file = INDEX_HTML.read_bytes()
-    start_response(
-        "200 OK",
-        [("Content-Type", "text/html"), ("Content-Length", str(len(html_file)))],
-    )
-    return [html_file]
+@app.get("/")
+def index():
+    return app.send_static_file("index.html")
+
+
+@app.get("/api/health")
+def health():
+    try:
+        db.check_connection()
+    except Exception:
+        app.logger.exception("Database check failed")
+        return jsonify(status="error", database="unreachable"), 503
+    return jsonify(status="ok", database="ok")
+
+
+# Create the tables on startup. If the database is unreachable, the app fails
+# to start, which makes the problem visible immediately in the Render logs.
+db.init_schema()

@@ -27,7 +27,7 @@ configuration). Frontend technologies without a build step are preferred.
 
 ## Decision
 
-Option 2, Vue 3 via CDN, without build tools. Decided by Adrian.
+Option 2, Vue 3 via CDN, without build tools.
 
 ## Reasons
 

@@ -21,7 +21,7 @@ symbols must be stored in the database and displayed in the frontend.
 ## Decision
 
 Option 2. The MVP frontend displays the codes as emoji; blanks are displayed
-explicitly. Decided by Adrian.
+explicitly.
 
 ## Reasons
 
