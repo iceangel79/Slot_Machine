@@ -6,31 +6,256 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Slot Machine Simulator</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 40rem;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        section {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .reels {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            margin: 1rem 0;
+        }
+
+        .reel {
+            width: 5rem;
+            height: 5rem;
+            font-size: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #333;
+            border-radius: 8px;
+        }
+
+        .win {
+            color: green;
+            font-weight: bold;
+        }
+
+        .error {
+            color: #b00;
+        }
+
+        button {
+            padding: 0.4rem 1rem;
+            margin-right: 0.5rem;
+        }
+
+        label {
+            margin-right: 1rem;
+        }
+
+        input {
+            width: 6rem;
+        }
+
+        small {
+            color: #666;
+        }
+    </style>
 </head>
 
 <body>
     <div id="app">
         <h1>Slot Machine Simulator</h1>
-        <p v-if="health === null">Checking backend...</p>
-        <p v-else>
-            Backend: {{ health.status }}, database: {{ health.database }}
-        </p>
+        <p><small>Backend: {{ health }}</small></p>
+
+        <section>
+            <label>
+                Configuration:
+                <select v-model="configurationId" :disabled="busy">
+                    <option v-for="c in configurations" :key="c.id" :value="c.id">
+                        #{{ c.id }} {{ c.name }}
+                    </option>
+                </select>
+            </label>
+        </section>
+
+        <!-- Manual spin (random.org with fallback to Python) -->
+        <section>
+            <div class="reels">
+                <div class="reel" v-for="(symbol, index) in symbols" :key="index" :title="symbol">
+                    {{ display(symbol) }}
+                </div>
+            </div>
+            <p v-if="lastSpin">
+                <span v-if="lastSpin.payout > 0" class="win">Win: {{ lastSpin.payout }}</span>
+                <span v-else>No win</span>
+                <small> (random source: {{ lastSource }})</small>
+            </p>
+            <button @click="manualSpin" :disabled="busy || !configurationId">Spin</button>
+        </section>
+
+        <!-- Autospin: one request per spin, with a visible delay -->
+        <section>
+            <h2>Autospin</h2>
+            <label>Spins <input type="number" v-model.number="autoCount" min="1"></label>
+            <label>Delay (ms) <input type="number" v-model.number="autoDelay" min="0"></label>
+            <p>
+                <button @click="autospin" :disabled="busy || !configurationId">Start</button>
+                <button @click="stopRequested = true" :disabled="!autospinRunning">Stop</button>
+                <small v-if="autospinRunning">{{ autoDone }} / {{ autoCount }}</small>
+            </p>
+        </section>
+
+        <!-- Mass simulation: no animation, split into requests of at most 10,000 spins -->
+        <section>
+            <h2>Mass simulation</h2>
+            <label>Spins <input type="number" v-model.number="massCount" min="1"></label>
+            <button @click="massSimulation" :disabled="busy || !configurationId">Run</button>
+            <p v-if="massResult">
+                {{ massResult.count }} spins, bet {{ massResult.totalBet }},
+                payout {{ massResult.totalPayout }},
+                RTP {{ (100 * massResult.totalPayout / massResult.totalBet).toFixed(2) }} %
+            </p>
+        </section>
+
+        <section>
+            <h2>This session</h2>
+            <p>
+                Spins: {{ session.count }}, bet: {{ session.totalBet }},
+                payout: {{ session.totalPayout }}
+            </p>
+        </section>
+
+        <p v-if="error" class="error">{{ error }}</p>
     </div>
 
     <script>
         const { createApp } = Vue;
 
+        // The backend only knows symbol codes (decision 0009); the display is
+        // decided here. Blanks are shown explicitly.
+        const EMOJI = {
+            CHERRY: "🍒",
+            LEMON: "🍋",
+            BELL: "🔔",
+            BAR: "💰",
+            SEVEN: "7️⃣",
+            BLANK: "⬜",
+        };
+        const MAX_SPINS_PER_REQUEST = 10000;
+
+        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
         createApp({
             data() {
-                return { health: null };
+                return {
+                    health: "checking...",
+                    configurations: [],
+                    configurationId: null,
+                    symbols: ["BLANK", "BLANK", "BLANK"],
+                    lastSpin: null,
+                    lastSource: null,
+                    autoCount: 20,
+                    autoDelay: 500,
+                    autoDone: 0,
+                    autospinRunning: false,
+                    stopRequested: false,
+                    massCount: 10000,
+                    massResult: null,
+                    session: { count: 0, totalBet: 0, totalPayout: 0 },
+                    busy: false,
+                    error: null,
+                };
             },
             async mounted() {
                 try {
-                    const response = await fetch("/api/health");
-                    this.health = await response.json();
+                    const health = await (await fetch("/api/health")).json();
+                    this.health = `${health.status}, database: ${health.database}`;
+                    this.configurations = await (await fetch("/api/configurations")).json();
+                    // The list is sorted newest first; preselect the newest one.
+                    if (this.configurations.length > 0) {
+                        this.configurationId = this.configurations[0].id;
+                    }
                 } catch (error) {
-                    this.health = { status: "unreachable", database: "unknown" };
+                    this.health = "unreachable";
                 }
+            },
+            methods: {
+                display(symbol) {
+                    return EMOJI[symbol] ?? symbol;
+                },
+                // Calls POST /api/spins and adds the result to the session totals.
+                async postSpins(mode, count) {
+                    const response = await fetch("/api/spins", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ configuration_id: this.configurationId, mode, count }),
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.error ?? `HTTP ${response.status}`);
+                    }
+                    this.session.count += data.count;
+                    this.session.totalBet += data.total_bet;
+                    this.session.totalPayout += data.total_payout;
+                    return data;
+                },
+                showSpin(data) {
+                    this.lastSpin = data.spins[data.spins.length - 1];
+                    this.lastSource = data.rng_source;
+                    this.symbols = this.lastSpin.symbols;
+                },
+                // Runs an action, shows errors and blocks the buttons meanwhile.
+                async run(action) {
+                    this.busy = true;
+                    this.error = null;
+                    try {
+                        await action();
+                    } catch (error) {
+                        this.error = error.message;
+                    } finally {
+                        this.busy = false;
+                    }
+                },
+                manualSpin() {
+                    return this.run(async () => {
+                        this.showSpin(await this.postSpins("manual", 1));
+                    });
+                },
+                autospin() {
+                    return this.run(async () => {
+                        this.autospinRunning = true;
+                        this.stopRequested = false;
+                        this.autoDone = 0;
+                        try {
+                            while (this.autoDone < this.autoCount && !this.stopRequested) {
+                                this.showSpin(await this.postSpins("auto", 1));
+                                this.autoDone += 1;
+                                await sleep(this.autoDelay);
+                            }
+                        } finally {
+                            this.autospinRunning = false;
+                        }
+                    });
+                },
+                massSimulation() {
+                    return this.run(async () => {
+                        const result = { count: 0, totalBet: 0, totalPayout: 0 };
+                        this.massResult = null;
+                        while (result.count < this.massCount) {
+                            const count = Math.min(MAX_SPINS_PER_REQUEST, this.massCount - result.count);
+                            const data = await this.postSpins("auto", count);
+                            result.count += data.count;
+                            result.totalBet += data.total_bet;
+                            result.totalPayout += data.total_payout;
+                        }
+                        this.massResult = result;
+                    });
+                },
             },
         }).mount("#app");
     </script>
