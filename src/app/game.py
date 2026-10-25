@@ -33,6 +33,28 @@ SYMBOLS = ("CHERRY", "LEMON", "BELL", "BAR", "SEVEN", "BLANK")
 REEL_COUNT = 3
 BET = 1
 
+# Default configuration (decision 0013). It is stored when the database has no
+# configuration yet. Each reel has 20 positions: 2 cherries, 3 lemons, 4 bells,
+# 2 bars, 1 seven and 8 blanks. Theoretical RTP 91.0 %, hit frequency 28.4 %.
+DEFAULT_CONFIG_NAME = "Classic (default)"
+_DEFAULT_STRIP = [
+    "BLANK", "CHERRY", "BLANK", "LEMON", "BLANK",
+    "BELL", "BLANK", "BAR", "BLANK", "SEVEN",
+    "BLANK", "LEMON", "BELL", "BLANK", "CHERRY",
+    "BELL", "BLANK", "LEMON", "BAR", "BELL",
+]  # fmt: skip
+DEFAULT_CONFIG = {
+    "reel_strips": [list(_DEFAULT_STRIP) for _ in range(REEL_COUNT)],
+    "paytable": [
+        {"type": "three_of_a_kind", "symbol": "SEVEN", "payout": 200},
+        {"type": "three_of_a_kind", "symbol": "BAR", "payout": 50},
+        {"type": "three_of_a_kind", "symbol": "BELL", "payout": 20},
+        {"type": "three_of_a_kind", "symbol": "CHERRY", "payout": 20},
+        {"type": "three_of_a_kind", "symbol": "LEMON", "payout": 10},
+        {"type": "cherry_count", "count": 2, "payout": 5},
+        {"type": "cherry_count", "count": 1, "payout": 2},
+    ],
+}
 
 def validate_config(config):
     """Check a configuration. Raises ValueError with a readable message."""

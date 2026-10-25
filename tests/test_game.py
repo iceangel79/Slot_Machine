@@ -163,3 +163,15 @@ def test_python_stop_positions_are_within_strips():
         assert 0 <= stops[0] < 3
         assert stops[1] == 0
         assert 0 <= stops[2] < 7
+
+
+# --- default configuration ---
+
+
+def test_default_config_is_valid_and_favours_the_house():
+    game.validate_config(game.DEFAULT_CONFIG)
+
+    stats = game.theoretical_stats(game.DEFAULT_CONFIG)
+
+    assert stats["rtp"] == pytest.approx(0.9098, abs=0.0001)
+    assert stats["hit_frequency"] == pytest.approx(0.2835, abs=0.0001)
