@@ -118,3 +118,57 @@ def test_spin_with_unknown_configuration_returns_404():
     response = post_spins(configuration_id=999999, mode="auto")
 
     assert response.status_code == 404
+
+    
+
+# --- configuration editor (decision 0016) ---
+
+
+def test_evaluate_returns_theoretical_values():
+    response = client.post("/api/configurations/evaluate", json=game.DEFAULT_CONFIG)
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["rtp"] == pytest.approx(0.9098, abs=0.0001)
+    assert len(data["rules"]) == len(game.DEFAULT_CONFIG["paytable"])
+
+
+def test_evaluate_rejects_invalid_configuration():
+    config = {"reel_strips": [["BLANK"] * 31] * 3, "paytable": []}
+
+    response = client.post("/api/configurations/evaluate", json=config)
+
+    assert response.status_code == 400
+    assert "30" in response.get_json()["error"]
+
+
+def test_new_configuration_is_saved():
+    config = {
+        "reel_strips": [["CHERRY", "BLANK"], ["CHERRY", "BLANK"], ["SEVEN"]],
+        "paytable": [{"type": "cherry_count", "count": 2, "payout": 3}],
+    }
+
+    response = client.post(
+        "/api/configurations", json={"name": "  Test config  ", **config}
+    )
+
+    assert response.status_code == 201
+    saved = response.get_json()
+    assert saved["name"] == "Test config"
+    assert saved["reel_strips"] == config["reel_strips"]
+    assert saved["paytable"] == config["paytable"]
+    ids = [c["id"] for c in client.get("/api/configurations").get_json()]
+    assert saved["id"] in ids
+
+
+@pytest.mark.parametrize("name", [None, "", "   ", "x" * 101])
+def test_configuration_without_valid_name_is_rejected(name):
+    body = {"name": name, **game.DEFAULT_CONFIG}
+
+    assert client.post("/api/configurations", json=body).status_code == 400
+
+
+def test_invalid_configuration_is_not_saved():
+    body = {"name": "Broken", "reel_strips": [], "paytable": []}
+
+    assert client.post("/api/configurations", json=body).status_code == 400

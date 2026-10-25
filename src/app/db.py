@@ -66,6 +66,21 @@ def get_configuration(configuration_id):
             (configuration_id,),
         ).fetchone()
 
+def insert_configuration(name, config):
+    """Store a new configuration and return its id.
+
+    Configurations are never changed afterwards (decision 0007).
+    """
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            INSERT INTO configurations (name, reel_strips, paytable)
+            VALUES (%s, %s, %s)
+            RETURNING id
+            """,
+            (name, Jsonb(config["reel_strips"]), Jsonb(config["paytable"])),
+        ).fetchone()
+    return row["id"]
 
 def insert_spins(configuration_id, results, rng_source):
     """Store spins (results of game.spin) in one transaction.
