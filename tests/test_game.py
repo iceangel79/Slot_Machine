@@ -203,3 +203,19 @@ def test_default_config_is_valid_and_favours_the_house():
 
     assert stats["rtp"] == pytest.approx(0.9098, abs=0.0001)
     assert stats["hit_frequency"] == pytest.approx(0.2835, abs=0.0001)
+
+    
+
+def test_reel_with_30_positions_is_valid():
+    config = broken(lambda c: c["reel_strips"].__setitem__(0, ["BLANK"] * 30))
+
+    game.validate_config(config)
+
+
+def test_reel_with_31_positions_is_rejected():
+    config = broken(lambda c: c["reel_strips"].__setitem__(0, ["BLANK"] * 31))
+
+    with pytest.raises(ValueError):
+        game.validate_config(config)
+
+        

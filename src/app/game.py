@@ -32,6 +32,8 @@ from itertools import product
 SYMBOLS = ("CHERRY", "LEMON", "BELL", "BAR", "SEVEN", "BLANK")
 REEL_COUNT = 3
 BET = 1
+# Classic mechanical slot machines had 20 to 22 stops per reel (decision 0017).
+MAX_STRIP_LENGTH = 30
 
 # Default configuration (decision 0013). It is stored when the database has no
 # configuration yet. Each reel has 20 positions: 2 cherries, 3 lemons, 4 bells,
@@ -65,8 +67,10 @@ def validate_config(config):
     if not isinstance(strips, list) or len(strips) != REEL_COUNT:
         raise ValueError(f"reel_strips must be a list of {REEL_COUNT} reels")
     for number, strip in enumerate(strips, start=1):
-        if not isinstance(strip, list) or not strip:
-            raise ValueError(f"reel {number} must be a non-empty list of symbols")
+        if not isinstance(strip, list) or not 1 <= len(strip) <= MAX_STRIP_LENGTH:
+            raise ValueError(
+                f"reel {number} must have 1 to {MAX_STRIP_LENGTH} positions"
+            )
         for symbol in strip:
             if symbol not in SYMBOLS:
                 raise ValueError(f"reel {number}: unknown symbol {symbol!r}")
