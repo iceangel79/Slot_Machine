@@ -7,7 +7,7 @@ def test_index_page_is_served():
     response = app.test_client().get("/")
 
     assert response.status_code == 200
-    assert b"Fehler" in response.data
+    assert b"Slot Machine Simulator" in response.data
 
 
 def test_health_reports_database_ok():
