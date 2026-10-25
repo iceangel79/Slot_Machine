@@ -125,7 +125,61 @@ Ergebnis: 24 neue Tests laufen ohne Datenbank. Ein Test prüft, dass die theoret
 ---
 
 Feature: Spielen (Schritt 8):
+Offene Punkte vorab mit Claude geklärt und als Decisions festgehalten:
 
+* 0013 Startkonfiguration: Solange es keine Konfigurations-GUI gibt, legt die App
+  beim Start eine Default-Konfiguration «Classic (default)» an, falls die Tabelle
+  `configurations` leer ist. Die Konfiguration steht als `DEFAULT_CONFIG` im Code
+  (`game.py`), wird also versioniert und per Unittest geprüft (gültig, RTP 91.0 %,
+  Trefferquote 28.4 %). Damit hat jede neue Datenbank (Neon, Test, CI) sofort eine
+  spielbare Konfiguration.
+* 0014 random.org: Ein Request pro Walze statt ein Request mit drei Zahlen.
+  Claude hat darauf hingewiesen, dass auch drei Zahlen aus einem Request
+  unabhängig wären. Der eigentliche Vorteil von drei Requests: Jede Zahl liegt
+  exakt im Bereich ihrer Walze, es braucht keinen Modulo und es gibt keine
+  Verzerrung. Kein API-Key nötig. Fällt einer der drei Requests aus, wird der
+  ganze Spin mit Python gezogen, damit `rng_source` eindeutig bleibt.
+* 0015 Test-Datenbank: Eigener Neon-Branch `test` (Parent `production`), URL als
+  `TEST_DATABASE_URL` in `.env`. `tests/conftest.py` biegt `DATABASE_URL` vor dem
+  Import der App auf die Test-DB um. Ohne `TEST_DATABASE_URL` werden die API-Tests
+  gar nicht erst gesammelt, so können sie nie versehentlich in die Produktiv-DB
+  schreiben. Damit ist das Risiko aus 0011 erledigt. In der CI heisst die
+  Variable jetzt ebenfalls `TEST_DATABASE_URL`.
+
+Umgesetzt (Entwürfe von Claude, selbst eingebaut und committed):
+
+* `POST /api/spins` mit `mode` manual (1 Spin, random.org mit Fallback) und
+  auto (bis 10'000 Spins, Python), dazu `GET /api/configurations` und
+  `GET /api/configurations/<id>`.
+* Die Obergrenze von 10'000 Spins pro Request schützt vor dem 30-Sekunden-Timeout
+  von Gunicorn. Grössere Massensimulationen teilt das Frontend auf mehrere
+  Requests auf.
+* Speichern aller Spins eines Requests in einer Transaktion mit `executemany`,
+  damit die Massensimulation trotz Netzwerk zur Neon-DB schnell bleibt.
+* Spiel-GUI in Vue: manueller Spin mit Anzeige der Zufallsquelle, Autospin mit
+  Verzögerung und Stop, Massensimulation mit Ist-RTP, Summen der Session.
+* 46 Tests (Spiellogik, random.org-Parsing und Fallback, Endpoints). random.org
+  wird in den Tests nie aufgerufen, sondern mit `monkeypatch` ersetzt.
+
+Erkenntnisse:
+
+* Neon-Branch: Beim Kopieren des Connection Strings unbedingt im Connect-Dialog
+  den Branch `test` wählen, sonst landen die Testdaten doch in `production`.
+  Kontrolle über den Hostnamen (`ep-...`), der sich je Branch unterscheidet.
+* Trick mit `lambda _lengths: stops`: `game.spin()` erwartet eine Zufallsquelle
+  als Funktion. Die Zahlen von random.org sind aber schon gezogen, also bekommt
+  `spin()` eine Funktion, die genau diese Zahlen zurückgibt. So bleibt `game.py`
+  frei von Netzwerk und Fallback.
+* Die Massensimulation mit 10'000 Spins ergibt einen RTP von rund 91 %, die
+  Praxis bestätigt also die Theorie.
+
+Test:
+
+* Lokal und auf Render alles funktionsfähig, auch auf dem Smartphone über das
+  Internet getestet.
+* random.org funktioniert auch von Render aus (Quelle wird als `random.org`
+  angezeigt).
+* Gespeicherte Spins inkl. `rng_source` manuell in der Neon Console geprüft.
 
 
 
