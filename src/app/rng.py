@@ -24,7 +24,10 @@ RANDOM_ORG_URL = (
     "https://www.random.org/integers/"
     "?num=1&min=0&max={max}&col=1&base=10&format=plain&rnd=new"
 )
-USER_AGENT = "slot-machine-simulator (FFHS student project; adrian.wegmann@students.ffhs.ch)"
+USER_AGENT = (
+    "slot-machine-simulator "
+    "(FFHS student project; adrian.wegmann@students.ffhs.ch)"
+)
 TIMEOUT_SECONDS = 3
 
 logger = logging.getLogger(__name__)
