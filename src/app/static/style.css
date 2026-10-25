@@ -72,6 +72,8 @@ th,
 td {
     padding: 0.25rem 0.5rem;
     text-align: left;
+    /* numbers like "12.34 %" stay on one line; the section scrolls instead */
+    white-space: nowrap;
 }
 
 td input,

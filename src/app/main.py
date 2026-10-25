@@ -147,6 +147,28 @@ def create_spins():
         spins=results,
     ), 201
 
+@app.get("/api/configurations/<int:configuration_id>/analysis")
+def analyse_configuration(configuration_id):
+    """Actual vs. theoretical values of the stored spins (decision 0018).
+
+    Optional filter: ?source=random.org or ?source=python (default: all spins).
+    """
+    source = request.args.get("source") or None
+    if source not in (None, rng.RANDOM_ORG, rng.PYTHON):
+        return jsonify(error="source must be 'random.org' or 'python'"), 400
+
+    configuration = db.get_configuration(configuration_id)
+    if configuration is None:
+        return jsonify(error="configuration not found"), 404
+
+    rows = db.spins_grouped_by_symbols(configuration_id, source)
+    return jsonify(
+        configuration_id=configuration_id,
+        source=source,
+        **game.analyse(configuration, rows),
+    )
+
+
 
 # Create the tables and the default configuration on startup (decisions 0010
 # and 0013). If the database is unreachable, the app fails to start, which

@@ -21,3 +21,10 @@ CREATE TABLE IF NOT EXISTS spins (
     payout           INTEGER     NOT NULL,
     rng_source       TEXT        NOT NULL CHECK (rng_source IN ('random.org', 'python'))
 );
+
+
+
+-- The analysis reads all spins of one configuration (decision 0018).
+-- PostgreSQL does not create an index for a foreign key automatically.
+CREATE INDEX IF NOT EXISTS spins_configuration_id_idx ON spins (configuration_id);
+

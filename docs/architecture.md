@@ -77,6 +77,9 @@ Notes:
    always read and written as a whole, so separate tables are not needed.
  * The bet is fixed at 1 credit per spin in the MVP; the payout is the
    paytable multiplier.
+ * The winning rule of a spin is not stored; the analysis recalculates it from
+   the three symbols (decisions 0012 and 0018). An index on
+   `spins (configuration_id)` keeps the analysis fast with many spins.
 
 ## API (first draft)
 
@@ -88,7 +91,7 @@ Notes:
 | POST | `/api/configurations` | Save a new configuration |
 | POST | `/api/configurations/evaluate` | Calculate probabilities and RTP without saving (live in the editor) |
 | POST | `/api/spins` | Execute spins: `{configuration_id, mode, count}` with `mode` = `manual` (1 spin, random.org) or `auto` (n spins, Python) |
-| GET | `/api/configurations/<id>/analysis` | Theoretical vs. actual values for one configuration |
+| GET | `/api/configurations/<id>/analysis` | Theoretical vs. actual values for one configuration; optional `?source=random.org` or `?source=python` (decision 0018) |
 
 Autospin with delay is a loop in the frontend that calls `/api/spins` with
 `mode=auto, count=1`. Mass simulation is a single call with a large `count`.

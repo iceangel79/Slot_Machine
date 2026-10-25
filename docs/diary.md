@@ -238,3 +238,46 @@ Erkenntnisse:
   Frontend zuerst die Browser-Konsole (F12) anschauen.
 
 
+
+---
+
+Schritt 10: Feature Auswerten
+
+Offene Punkte vorab mit Claude geklärt und als Decision 0018 festgehalten:
+
+* Treffer pro Regel: Die Tabelle `spins` speichert keine Gewinnregel (0012).
+  Die DB gruppiert die Spins deshalb nach den drei Symbolen (`GROUP BY`), das
+  ergibt höchstens 6 × 6 × 6 = 216 Zeilen, egal wie viele Spins es sind. Python
+  wertet jede Gruppe einmal mit `game.evaluate()` aus. Gleiches Prinzip wie bei
+  den theoretischen Werten: Theorie und Auswertung verwenden dieselbe Funktion.
+* Zufallsquelle: optionaler Filter `?source=random.org|python`, im GUI als
+  Dropdown. Damit ist das Follow-up aus 0008 erledigt.
+* Normale Schwankung: Pro Wert ein erwarteter Bereich (95 %), also Sollwert
+  ± 1.96 Standardfehler. Werte ausserhalb werden mit ✗ markiert. Für den RTP
+  wird die Standardabweichung der Auszahlung pro Spin exakt aus den
+  Regelwahrscheinlichkeiten berechnet. Bei der Default-Konfiguration ist sie
+  rund 3.5: Nach 1'000 Spins liegt der RTP mit 95 % zwischen etwa 69 % und
+  113 %, erst nach 1 Mio. Spins ist der Bereich ± 0.7 %. Der Jackpot (drei
+  Sieben, etwa 1 von 8'000) macht den RTP stark schwankend.
+* Keine Grafik: Die Tabelle erfüllt F4 vollständig. Eine Konvergenzkurve
+  (Ist-RTP über die Anzahl Spins) wäre eine mögliche Erweiterung für die
+  Präsentation.
+
+Umgesetzt (Entwürfe von Claude, selbst eingebaut und committed):
+
+* `game.analyse()` als reine Funktion ohne DB, mit Unittests.
+* Query `db.spins_grouped_by_symbols()` und Index auf
+  `spins (configuration_id)`. Postgres legt für Foreign Keys keinen Index
+  automatisch an.
+* Endpoint `GET /api/configurations/<id>/analysis`.
+* Seite `analyse.html`, Navigation auf allen drei Seiten.
+* 67 Tests.
+
+Erkenntnisse:
+
+* Zuerst nur 40 Tests grün: Ich hatte nur `tests/test_game.py` gestartet.
+  Mit `uv run pytest` laufen alle 67 Tests inkl. API-Tests.
+* Bei 95 % liegt auch bei korrektem Zufall etwa jeder 20. Wert ausserhalb des
+  Bereichs. Ein einzelnes ✗ ist also noch kein Fehler.
+* gegen Ende des Projektes, wurde es zunehmend schwieriger die Zusammenhänge und Änderungen am Code zu verstehen (was von Claude vorgeschlagen wurde)
+

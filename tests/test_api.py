@@ -171,3 +171,68 @@ def test_invalid_configuration_is_not_saved():
     body = {"name": "Broken", "reel_strips": [], "paytable": []}
 
     assert client.post("/api/configurations", json=body).status_code == 400
+
+
+
+
+# --- analysis (decision 0018) ---
+
+
+def new_configuration():
+    """Save a fresh configuration, so the analysis only sees this test's spins.
+
+    Reel 3 has only cherries: every spin has 1 to 3 cherries.
+    """
+    config = {
+        "reel_strips": [["CHERRY", "BLANK"], ["CHERRY", "BLANK"], ["CHERRY"]],
+        "paytable": [
+            {"type": "cherry_count", "count": 3, "payout": 10},
+            {"type": "cherry_count", "count": 1, "payout": 2},
+        ],
+    }
+    response = client.post("/api/configurations", json={"name": "Analysis", **config})
+    return response.get_json()["id"]
+
+
+def test_analysis_without_spins():
+    configuration_id = new_configuration()
+
+    response = client.get(f"/api/configurations/{configuration_id}/analysis")
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["spins"] == 0
+    assert data["rtp"]["actual"] is None
+    assert data["hit_frequency"]["theoretical"] == pytest.approx(0.5)
+
+
+def test_analysis_counts_stored_spins_and_filters_by_source(monkeypatch):
+    configuration_id = new_configuration()
+    # random.org: three cherries (pays 10)
+    monkeypatch.setattr(rng, "random_org_stop_positions", lambda lengths: [0, 0, 0])
+    post_spins(configuration_id=configuration_id, mode="manual")
+    # Python: one cherry (pays 2), twice
+    monkeypatch.setattr(rng, "python_stop_positions", lambda lengths: [1, 1, 0])
+    post_spins(configuration_id=configuration_id, mode="auto", count=2)
+
+    url = f"/api/configurations/{configuration_id}/analysis"
+    everything = client.get(url).get_json()
+    only_random_org = client.get(url, query_string={"source": "random.org"}).get_json()
+
+    assert everything["spins"] == 3
+    assert everything["total_payout"] == 14
+    assert [rule["hits"] for rule in everything["rules"]] == [1, 2]
+    assert everything["rtp"]["actual"] == pytest.approx(14 / 3)
+    assert only_random_org["spins"] == 1
+    assert only_random_org["source"] == "random.org"
+    assert [rule["hits"] for rule in only_random_org["rules"]] == [1, 0]
+
+
+def test_analysis_rejects_unknown_source():
+    url = f"/api/configurations/{default_configuration_id()}/analysis"
+
+    assert client.get(url, query_string={"source": "dice"}).status_code == 400
+
+
+def test_analysis_of_unknown_configuration_returns_404():
+    assert client.get("/api/configurations/999999/analysis").status_code == 404

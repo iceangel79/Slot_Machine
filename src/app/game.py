@@ -26,6 +26,10 @@ Rules of the game:
    tie, the first one in the paytable).
 """
 
+import math
+from collections import Counter
+from itertools import product
+
 from collections import Counter
 from itertools import product
 
@@ -34,6 +38,9 @@ REEL_COUNT = 3
 BET = 1
 # Classic mechanical slot machines had 20 to 22 stops per reel (decision 0017).
 MAX_STRIP_LENGTH = 30
+
+# z value of the 95 % expected range in the analysis (decision 0018).
+Z_95 = 1.96
 
 # Default configuration (decision 0013). It is stored when the database has no
 # configuration yet. Each reel has 20 positions: 2 cherries, 3 lemons, 4 bells,
@@ -192,4 +199,117 @@ def theoretical_stats(config):
         "rules": rules,
         "hit_frequency": sum(rule_probabilities),
         "rtp": sum(rule["rtp_contribution"] for rule in rules) / BET,
+    }
+
+def expected_range(theoretical, std_dev, spins, upper_limit=None):
+    """Return (low, high): the range in which the actual value lies with 95 %
+    probability, if the spins follow the configuration (decision 0018).
+
+    The standard error of an average over `spins` spins is std_dev / sqrt(spins).
+    """
+    margin = Z_95 * std_dev / math.sqrt(spins)
+    low = max(0.0, theoretical - margin)
+    high = theoretical + margin
+    if upper_limit is not None:
+        high = min(upper_limit, high)
+    return low, high
+
+
+def _compare(actual, theoretical, std_dev, spins, upper_limit=None):
+    """One line of the analysis: actual vs. theoretical value with the range."""
+    if spins == 0:
+        return {
+            "actual": None,
+            "theoretical": theoretical,
+            "low": None,
+            "high": None,
+            "in_range": None,
+        }
+    low, high = expected_range(theoretical, std_dev, spins, upper_limit)
+    return {
+        "actual": actual,
+        "theoretical": theoretical,
+        "low": low,
+        "high": high,
+        "in_range": low <= actual <= high,
+    }
+
+
+def _binomial_std_dev(probability):
+    """Standard deviation of a yes/no event (hit or no hit) per spin."""
+    return math.sqrt(probability * (1 - probability))
+
+
+def analyse(config, rows):
+    """Compare stored spins with the theoretical values (decision 0018).
+
+    rows are the spins grouped by their three symbols, exactly as returned by
+    the database: {"symbol_1": ..., "symbol_2": ..., "symbol_3": ...,
+    "spins": n, "bet": total bet, "payout": total payout}. There are at most
+    6 x 6 x 6 = 216 rows, independent of the number of spins.
+
+    The winning rule is recalculated from the symbols with the same function
+    that is used when playing (evaluate, decision 0012).
+    """
+    stats = theoretical_stats(config)
+    paytable = config["paytable"]
+
+    spins = sum(row["spins"] for row in rows)
+    total_bet = sum(row["bet"] for row in rows)
+    total_payout = sum(row["payout"] for row in rows)
+
+    hits_per_rule = [0] * len(paytable)
+    for row in rows:
+        symbols = [row["symbol_1"], row["symbol_2"], row["symbol_3"]]
+        rule_index, _ = evaluate(symbols, paytable)
+        if rule_index is not None:
+            hits_per_rule[rule_index] += row["spins"]
+    hits = sum(hits_per_rule)
+
+    # Standard deviation of the payout of one spin, used for the RTP range:
+    # variance = E[payout^2] - E[payout]^2
+    mean_square = sum(
+        rule["probability"] * (rule["rule"]["payout"] * BET) ** 2
+        for rule in stats["rules"]
+    )
+    payout_std_dev = math.sqrt(max(0.0, mean_square - (stats["rtp"] * BET) ** 2))
+
+    def share(count):
+        return count / spins if spins else None
+
+    rules = []
+    for rule, rule_hits in zip(stats["rules"], hits_per_rule, strict=True):
+        probability = rule["probability"]
+        rules.append(
+            {
+                "rule": rule["rule"],
+                "hits": rule_hits,
+                **_compare(
+                    share(rule_hits),
+                    probability,
+                    _binomial_std_dev(probability),
+                    spins,
+                    upper_limit=1.0,
+                ),
+            }
+        )
+
+    return {
+        "spins": spins,
+        "total_bet": total_bet,
+        "total_payout": total_payout,
+        "rtp": _compare(
+            total_payout / total_bet if total_bet else None,
+            stats["rtp"],
+            payout_std_dev / BET,
+            spins,
+        ),
+        "hit_frequency": _compare(
+            share(hits),
+            stats["hit_frequency"],
+            _binomial_std_dev(stats["hit_frequency"]),
+            spins,
+            upper_limit=1.0,
+        ),
+        "rules": rules,
     }
