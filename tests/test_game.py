@@ -165,6 +165,34 @@ def test_python_stop_positions_are_within_strips():
         assert 0 <= stops[2] < 7
 
 
+
+def test_manual_stop_positions_use_random_org(monkeypatch):
+    monkeypatch.setattr(rng, "random_org_stop_positions", lambda lengths: [1, 2, 3])
+
+    assert rng.manual_stop_positions([5, 5, 5]) == ([1, 2, 3], "random.org")
+
+
+def test_manual_stop_positions_fall_back_to_python(monkeypatch):
+    def failing(strip_lengths):
+        raise OSError("random.org not reachable")
+
+    monkeypatch.setattr(rng, "random_org_stop_positions", failing)
+
+    stops, source = rng.manual_stop_positions([5, 5, 5])
+
+    assert source == "python"
+    assert all(0 <= stop < 5 for stop in stops)
+
+
+def test_random_org_answer_is_parsed():
+    assert rng.parse_random_org_number("17\n", 20) == 17
+
+
+@pytest.mark.parametrize("text", ["20\n", "-1\n", "Error: quota exceeded\n"])
+def test_unexpected_random_org_answer_is_rejected(text):
+    with pytest.raises(ValueError):
+        rng.parse_random_org_number(text, 20)
+
 # --- default configuration ---
 
 
