@@ -110,6 +110,18 @@ Fazit zu Schritt 6: Es gibt aktuell zwei Tests, einen für die Startseite und ei
 
 ---
 
+Spiellogik (Schritt 7): reines Python-Modul ohne Flask und ohne Datenbank (app/game.py, Zufallsquelle in app/rng.py) mit Unittests (tests/test_game.py).
+Mit Claude die offenen Entscheide geklärt und in Decision 0012 festgehalten:
+- Konfiguration und Auszahltabelle als einfache Dicts, genau so wie sie als JSON in der DB stehen.
+- «Kirschen-Zähler» heisst genau n Kirschen, Position egal.
+- Treffen mehrere Regeln zu, zahlt nur die höchste. So gehört jeder Spin zu höchstens einer Regel, was die Analyse pro Regel einfach macht.
+- Die theoretischen Werte werden nicht mit Formeln berechnet, sondern alle Symbolkombinationen werden mit derselben Funktion ausgewertet wie beim Spielen. Theorie und Praxis können so nicht auseinanderlaufen.
+- Die Zufallsquelle wird als Funktion übergeben. In den Tests liefert sie feste Stoppositionen.
+
+Stolperstein: app/__init__.py hat beim Import die Tabellen erstellt. Jeder Import von app.game hätte damit eine Datenbank gebraucht. Lösung: Die Flask-App liegt neu in app/main.py, Gunicorn startet app.main:app (Dockerfile und README angepasst).
+
+Ergebnis: 24 neue Tests laufen ohne Datenbank. Ein Test prüft, dass die theoretische Berechnung dasselbe ergibt wie das Durchprobieren aller Stoppositionen.
+
 
 
 
