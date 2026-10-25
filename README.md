@@ -80,12 +80,12 @@ Activate the environment and launch the WSGI server:
 
 - **On Linux / macOS:**
   ```bash
-  uv run gunicorn --bind 127.0.0.1:8000 app:app
+  uv run gunicorn --bind 127.0.0.1:8000 app.main:app
   ```
 
 - **On Windows:**
   ```powershell
-  uv run waitress-serve --port=8000 app:app
+  uv run waitress-serve --port=8000 app.main:app
   ```
 
 Open your browser and navigate to `http://localhost:8000`.

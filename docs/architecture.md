@@ -13,7 +13,7 @@ flowchart LR
 
     subgraph render["Render (web service)"]
         subgraph backend["Python backend (Flask, Gunicorn)"]
-            api["API routes<br/>app/__init__.py"]
+            api["API routes<br/>app/main.py"]
             game["Game logic<br/>app/game.py"]
             rng["Random sources<br/>app/rng.py"]
             db["Database access<br/>app/db.py"]

@@ -1,6 +1,6 @@
 """Tests for the HTTP endpoints. They need a database (decision 0011)."""
 
-from app import app
+from app.main import app
 
 
 def test_index_page_is_served():

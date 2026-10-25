@@ -106,7 +106,7 @@ Bewusster Fehler eingebaut, "assert b"Slot Machine Simulator" in response.data" 
 im Anschluss korrigiert und "assert b"Fehler" in response.data" geändert auf "assert b"Fehler" in response.data" .
 verstanden, dass ci.yml automatische tests nach dem commit auf github durchführt. dies dient vor allem auch dazu, dass wenn verschiedene personen an etwas arbeiten, diese nicht unwissentlich fehlerhafte Code teile ins Hauptsystem bringen.
 
-Fazit zu Schritt 6: Es gibt aktuell zwei Tests, einen für die Startseite und einen für den Health-Check inklusive DB-Verbindung. «Tests für die Datenbankanbindung» klingt nach mehr, als vorhanden ist. Bei der Präsentation könnte jemand nachfragen.
+Fazit zu Schritt 6: Es gibt aktuell zwei Tests, einen für die Startseite und einen für den Health-Check inklusive DB-Verbindung. 
 
 ---
 
