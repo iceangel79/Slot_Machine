@@ -19,7 +19,7 @@ constraints, team skill level, and project scope.
 
 ## Decision
 
-State the chosen option and who made the decision.
+State the chosen option.
 
 ## Reasons
 

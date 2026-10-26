@@ -5,8 +5,11 @@ The backend is to be kept completely in Python. The frontend stack can be chosen
 freely.
 
  * We use `uv` for any Python related tasks
+ * Chosen stack: Flask (Gunicorn), Vue 3 via CDN, PostgreSQL on Neon with
+   plain SQL (`psycopg`), random.org as external web service. See
+   `README.md` and decisions 0004 to 0010.
 
- ## Language
+## Language
 
  * All code, comments, docstrings, commit messages, decision records and
    general documentation are written in English.
@@ -22,20 +25,12 @@ freely.
 
 ## Files and directories
 
- * Check `docs/directories.md` for the recommended directory structure.
- * In case Django is used, the entire `src/` directory maybe adapted for Djangos
-   directory conventions and the `app/` directory may be removed or ignored.
- * The project currently contains a very simple vanilla Python-based WSGI
-   application that can be run with gunicorn/waitress. Once the developers have
-   decided on the way to go, remove any of this basic code from
-   `src/app/__init__.py` and `src/app/static/index.html`.
- * If the developers choose Flask and deployment to Azure App Service with the
-   built-in Python runtime, follow
-   `docs/deployment-azure-app-service-flask.md`. In particular, create a
-   root-level `startup.sh` for Gunicorn and make sure `src/app/__init__.py`
-   exposes a Flask application object named `app` so `app:app` can be imported.
-   Keep these steps conditional; do not add Flask-specific Azure files when the
-   team chooses Django, FastAPI, Starlette or a container-based deployment.
+ * Check `docs/directories.md` for the directory structure.
+ * The Flask application lives in `src/app/main.py`; Gunicorn starts
+   `app.main:app` (decision 0012). Keep the package `app` free of side
+   effects on import, so the game logic can be tested without a database.
+ * Game logic stays in `src/app/game.py` without Flask and database.
+ * The application is deployed as Docker image on Render (decision 0001).
 
 ## Design guidelines
 
@@ -73,5 +68,6 @@ should use that skill for feature requests, technology choices, architecture
 placement questions, and decision records in this project.
 
 Decision records for this project belong in `docs/decisions` and should be
-based on `docs/decision-template.md`.
+based on `docs/decision-template.md`. They describe the decision, not who made
+it.
 
