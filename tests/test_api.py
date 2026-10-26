@@ -6,7 +6,7 @@ with monkeypatch (decision 0014).
 
 import pytest
 
-from app import game, rng
+from app import db, game, rng
 from app.main import app
 
 client = app.test_client()
@@ -42,6 +42,30 @@ def test_health_reports_database_ok():
 
     assert response.status_code == 200
     assert response.get_json() == {"status": "ok", "database": "ok"}
+
+
+def test_health_reports_unreachable_database(monkeypatch):
+    def failing_check():
+        raise OSError("database not reachable")
+
+    monkeypatch.setattr(db, "check_connection", failing_check)
+
+    response = client.get("/api/health")
+
+    assert response.status_code == 503
+    assert response.get_json()["database"] == "unreachable"
+
+
+@pytest.mark.parametrize("page", ["configure.html", "analyse.html", "common.js"])
+def test_other_pages_are_served(page):
+    assert client.get(f"/{page}").status_code == 200
+
+
+@pytest.mark.parametrize(
+    "path", ["/api/spins", "/api/configurations", "/api/configurations/evaluate"]
+)
+def test_request_without_json_object_returns_400(path):
+    assert client.post(path, data="no json").status_code == 400
 
 
 # --- configurations ---

@@ -148,6 +148,7 @@ def broken(change):
         broken(lambda c: c["paytable"][0].update(payout=0)),
         broken(lambda c: c["paytable"][0].update(payout=2.5)),
         broken(lambda c: c["paytable"][0].update(payout=True)),
+        broken(lambda c: c["paytable"].append("not a rule")),
     ],
 )
 def test_invalid_config_is_rejected(config):
@@ -182,6 +183,42 @@ def test_manual_stop_positions_fall_back_to_python(monkeypatch):
 
     assert source == "python"
     assert all(0 <= stop < 5 for stop in stops)
+
+
+def test_random_org_is_asked_once_per_reel_within_its_range(monkeypatch):
+    """No real HTTP request: urlopen is replaced and records the URLs."""
+    urls = []
+
+    class FakeResponse:
+        def __init__(self, url):
+            self.url = url
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def read(self):
+            # Answer with the highest allowed number, e.g. max=19 -> "19"
+            return self.url.split("max=")[1].split("&")[0].encode("ascii")
+
+    def fake_urlopen(request, timeout):
+        urls.append(request.full_url)
+        assert "@" in request.get_header("User-agent")
+        assert timeout == rng.TIMEOUT_SECONDS
+        return FakeResponse(request.full_url)
+
+    monkeypatch.setattr(rng.urllib.request, "urlopen", fake_urlopen)
+
+    assert rng.random_org_stop_positions([20, 5, 30]) == [19, 4, 29]
+    assert len(urls) == 3
+    assert "max=4&" in urls[1]
+
+
+def test_spin_rejects_random_source_with_wrong_number_of_stops():
+    with pytest.raises(ValueError):
+        game.spin(CONFIG, fixed(0, 0))
 
 
 def test_random_org_answer_is_parsed():
