@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Configure - Slot Machine Simulator</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <script src="common.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <nav><a href="index.html">Play</a><a href="configure.html">Configure</a><a href="analyse.html">Analyse</a></nav>
+        <h1>Configure</h1>
+        <p><small>
+                Saved configurations are never changed (decision 0007). Start from an
+                existing one, change it and save it as a new configuration.
+            </small></p>
+
+        <section>
+            <label>
+                Start from:
+                <select v-model="baseId" @change="loadBase">
+                    <option v-for="c in configurations" :key="c.id" :value="c.id">
+                        #{{ c.id }} {{ c.name }}
+                    </option>
+                </select>
+            </label>
+        </section>
+
+        <!-- Reel strips as number of positions per symbol and reel (decision 0016) -->
+        <section>
+            <h2>Reels</h2>
+            <table>
+                <tr>
+                    <th>Symbol</th>
+                    <th v-for="reel in 3" :key="reel">Reel {{ reel }}</th>
+                </tr>
+                <tr v-for="symbol in symbols" :key="symbol">
+                    <td :title="symbol">{{ display(symbol) }}</td>
+                    <td v-for="(reelCounts, reel) in counts" :key="reel">
+                        <input type="number" min="0" :max="maxStripLength" v-model.number="reelCounts[symbol]">
+                    </td>
+                </tr>
+                <tr>
+                    <th>Positions</th>
+                    <th v-for="(length, reel) in stripLengths" :key="reel"
+                        :class="{ error: length < 1 || length > maxStripLength }">
+                        {{ length }} / {{ maxStripLength }}
+                    </th>
+                </tr>
+            </table>
+        </section>
+
+        <!-- Paytable: evaluated in this order; on equal payout the first rule wins -->
+        <section>
+            <h2>Paytable</h2>
+            <table>
+                <tr>
+                    <th>Rule</th>
+                    <th>Condition</th>
+                    <th>Payout</th>
+                    <th>Probability</th>
+                    <th></th>
+                </tr>
+                <tr v-for="(rule, index) in paytable" :key="index">
+                    <td>
+                        <select v-model="rule.type">
+                            <option value="three_of_a_kind">Three of a kind</option>
+                            <option value="cherry_count">Cherry count</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select v-if="rule.type === 'three_of_a_kind'" v-model="rule.symbol">
+                            <option v-for="symbol in symbols" :key="symbol" :value="symbol">
+                                {{ display(symbol) }} {{ symbol }}
+                            </option>
+                        </select>
+                        <select v-else v-model.number="rule.count">
+                            <option v-for="count in [1, 2, 3]" :key="count" :value="count">
+                                exactly {{ count }} {{ display("CHERRY") }}
+                            </option>
+                        </select>
+                    </td>
+                    <td><input type="number" min="1" v-model.number="rule.payout"></td>
+                    <td>{{ stats?.rules[index] ? percent(stats.rules[index].probability, 3) : "" }}</td>
+                    <td><button @click="paytable.splice(index, 1)">Remove</button></td>
+                </tr>
+            </table>
+            <p><button @click="addRule">Add rule</button></p>
+        </section>
+
+        <!-- Theoretical values, calculated by the backend while editing -->
+        <section>
+            <h2>Theoretical values</h2>
+            <p v-if="evaluateError" class="error">{{ evaluateError }}</p>
+            <template v-else-if="stats">
+                <p>
+                    RTP: <strong>{{ percent(stats.rtp, 2) }}</strong>,
+                    hit frequency: <strong>{{ percent(stats.hit_frequency, 2) }}</strong>
+                </p>
+                <p v-if="stats.rtp > 1" class="warning">
+                    RTP above 100 %: the player wins in the long run.
+                </p>
+            </template>
+            <p v-else><small>Calculating...</small></p>
+        </section>
+
+        <section>
+            <label>Name <input v-model="name" maxlength="100" style="width: 16rem"></label>
+            <button @click="save" :disabled="saving || evaluateError !== null">
+                Save as new configuration
+            </button>
+            <p v-if="saveError" class="error">{{ saveError }}</p>
+            <p v-if="saved">
+                Saved as #{{ saved.id }} {{ saved.name }}.
+                <a href="index.html">Play it</a>
+            </p>
+        </section>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        const MAX_STRIP_LENGTH = 30;  // same limit as in the backend (decision 0017)
+        const EVALUATE_DELAY_MS = 300;
+
+        // ["CHERRY", "BLANK", "CHERRY"] -> {CHERRY: 2, LEMON: 0, ..., BLANK: 1}
+        function countSymbols(strip) {
+            const counts = Object.fromEntries(SYMBOLS.map((symbol) => [symbol, 0]));
+            for (const symbol of strip) {
+                counts[symbol] += 1;
+            }
+            return counts;
+        }
+
+        // {CHERRY: 2, BLANK: 1, ...} -> ["CHERRY", "CHERRY", "BLANK"]
+        // The order on the strip does not change any probability (decision 0016).
+        function buildStrip(counts) {
+            return SYMBOLS.flatMap((symbol) => Array(Number(counts[symbol]) || 0).fill(symbol));
+        }
+
+        // Only the fields that belong to the rule type are sent to the backend.
+        function cleanRule(rule) {
+            if (rule.type === "three_of_a_kind") {
+                return { type: rule.type, symbol: rule.symbol, payout: rule.payout };
+            }
+            return { type: rule.type, count: rule.count, payout: rule.payout };
+        }
+
+        async function postJson(url, body) {
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error ?? `HTTP ${response.status}`);
+            }
+            return data;
+        }
+
+        createApp({
+            data() {
+                return {
+                    symbols: SYMBOLS,
+                    maxStripLength: MAX_STRIP_LENGTH,
+                    configurations: [],
+                    baseId: null,
+                    name: "",
+                    counts: [],
+                    paytable: [],
+                    stats: null,
+                    evaluateError: null,
+                    evaluateTimer: null,
+                    saving: false,
+                    saveError: null,
+                    saved: null,
+                };
+            },
+            computed: {
+                stripLengths() {
+                    return this.counts.map((reelCounts) => buildStrip(reelCounts).length);
+                },
+                config() {
+                    return {
+                        reel_strips: this.counts.map(buildStrip),
+                        paytable: this.paytable.map(cleanRule),
+                    };
+                },
+            },
+            watch: {
+                // Recalculate the theoretical values whenever the configuration
+                // changes, but only after a short pause in typing.
+                config: {
+                    deep: true,
+                    handler() {
+                        clearTimeout(this.evaluateTimer);
+                        this.evaluateTimer = setTimeout(this.evaluate, EVALUATE_DELAY_MS);
+                    },
+                },
+            },
+            async mounted() {
+                this.configurations = await (await fetch("/api/configurations")).json();
+                if (this.configurations.length > 0) {
+                    this.baseId = this.configurations[0].id;
+                    await this.loadBase();
+                }
+            },
+            methods: {
+                display(symbol) {
+                    return EMOJI[symbol] ?? symbol;
+                },
+                percent(value, digits) {
+                    return `${(100 * value).toFixed(digits)} %`;
+                },
+                async loadBase() {
+                    const base = await (await fetch(`/api/configurations/${this.baseId}`)).json();
+                    this.name = `Copy of ${base.name}`.slice(0, 100);
+                    this.counts = base.reel_strips.map(countSymbols);
+                    // Every row has symbol and count, so switching the type keeps a valid value.
+                    this.paytable = base.paytable.map((rule) => ({
+                        symbol: "SEVEN", count: 1, ...rule,
+                    }));
+                    this.saved = null;
+                },
+                addRule() {
+                    this.paytable.push({ type: "three_of_a_kind", symbol: "SEVEN", count: 1, payout: 10 });
+                },
+                async evaluate() {
+                    try {
+                        this.stats = await postJson("/api/configurations/evaluate", this.config);
+                        this.evaluateError = null;
+                    } catch (error) {
+                        this.stats = null;
+                        this.evaluateError = error.message;
+                    }
+                },
+                async save() {
+                    this.saving = true;
+                    this.saveError = null;
+                    this.saved = null;
+                    try {
+                        this.saved = await postJson("/api/configurations", { name: this.name, ...this.config });
+                        this.configurations = await (await fetch("/api/configurations")).json();
+                    } catch (error) {
+                        this.saveError = error.message;
+                    } finally {
+                        this.saving = false;
+                    }
+                },
+            },
+        }).mount("#app");
+    </script>
+</body>
+
+</html>

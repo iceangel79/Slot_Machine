@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Analyse - Slot Machine Simulator</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <script src="common.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <nav><a href="index.html">Play</a><a href="configure.html">Configure</a><a href="analyse.html">Analyse</a></nav>
+        <h1>Analyse</h1>
+
+        <section>
+            <label>
+                Configuration:
+                <select v-model="configurationId" @change="load">
+                    <option v-for="c in configurations" :key="c.id" :value="c.id">
+                        #{{ c.id }} {{ c.name }}
+                    </option>
+                </select>
+            </label>
+            <label>
+                Random source:
+                <select v-model="source" @change="load">
+                    <option value="">All</option>
+                    <option value="random.org">random.org</option>
+                    <option value="python">Python</option>
+                </select>
+            </label>
+            <button @click="load">Refresh</button>
+        </section>
+
+        <p v-if="error" class="error">{{ error }}</p>
+
+        <template v-if="analysis">
+            <section>
+                <h2>Spins</h2>
+                <p>
+                    Spins: <strong>{{ analysis.spins }}</strong>,
+                    total bet: <strong>{{ analysis.total_bet }}</strong>,
+                    total payout: <strong>{{ analysis.total_payout }}</strong>
+                </p>
+                <p v-if="analysis.spins === 0"><small>No spins yet for this selection.</small></p>
+            </section>
+
+            <!-- Expected range: actual value lies within it with 95 % probability (decision 0018) -->
+            <section>
+                <h2>Actual vs. theoretical</h2>
+                <table>
+                    <tr>
+                        <th>Value</th>
+                        <th>Hits</th>
+                        <th>Actual</th>
+                        <th>Theoretical</th>
+                        <th>Expected range (95 %)</th>
+                        <th></th>
+                    </tr>
+                    <tr>
+                        <td>RTP</td>
+                        <td></td>
+                        <td>{{ percent(analysis.rtp.actual, 2) }}</td>
+                        <td>{{ percent(analysis.rtp.theoretical, 2) }}</td>
+                        <td>{{ range(analysis.rtp, 2) }}</td>
+                        <td :class="marker(analysis.rtp).css">{{ marker(analysis.rtp).text }}</td>
+                    </tr>
+                    <tr>
+                        <td>Hit frequency</td>
+                        <td>{{ totalHits }}</td>
+                        <td>{{ percent(analysis.hit_frequency.actual, 2) }}</td>
+                        <td>{{ percent(analysis.hit_frequency.theoretical, 2) }}</td>
+                        <td>{{ range(analysis.hit_frequency, 2) }}</td>
+                        <td :class="marker(analysis.hit_frequency).css">{{ marker(analysis.hit_frequency).text }}</td>
+                    </tr>
+                    <tr v-for="(line, index) in analysis.rules" :key="index">
+                        <td>{{ describe(line.rule) }}</td>
+                        <td>{{ line.hits }}</td>
+                        <td>{{ percent(line.actual, 3) }}</td>
+                        <td>{{ percent(line.theoretical, 3) }}</td>
+                        <td>{{ range(line, 3) }}</td>
+                        <td :class="marker(line).css">{{ marker(line).text }}</td>
+                    </tr>
+                </table>
+                <p><small>
+                        ✓ within, ✗ outside the expected range. The expected range is the
+                        theoretical value &plusmn; 1.96 standard errors. With correct random
+                        numbers, about 1 in 20 values lies outside by chance. With few spins
+                        or rare rules the range is only a rough approximation.
+                    </small></p>
+            </section>
+        </template>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    configurations: [],
+                    configurationId: null,
+                    source: "",
+                    analysis: null,
+                    error: null,
+                };
+            },
+            computed: {
+                totalHits() {
+                    return this.analysis.rules.reduce((sum, line) => sum + line.hits, 0);
+                },
+            },
+            async mounted() {
+                this.configurations = await (await fetch("/api/configurations")).json();
+                if (this.configurations.length > 0) {
+                    this.configurationId = this.configurations[0].id;
+                    await this.load();
+                }
+            },
+            methods: {
+                percent(value, digits) {
+                    return value === null ? "–" : `${(100 * value).toFixed(digits)} %`;
+                },
+                range(line, digits) {
+                    if (line.low === null) {
+                        return "–";
+                    }
+                    return `${this.percent(line.low, digits)} – ${this.percent(line.high, digits)}`;
+                },
+                // The backend decides whether a value is within the range; the page only shows it.
+                marker(line) {
+                    if (line.in_range === null) {
+                        return { text: "", css: "" };
+                    }
+                    return line.in_range
+                        ? { text: "✓", css: "win" }
+                        : { text: "✗", css: "warning" };
+                },
+                // e.g. "3 × 7️⃣ (200)" or "exactly 2 × 🍒 (5)"
+                describe(rule) {
+                    if (rule.type === "three_of_a_kind") {
+                        return `3 × ${EMOJI[rule.symbol]} (${rule.payout})`;
+                    }
+                    return `exactly ${rule.count} × ${EMOJI.CHERRY} (${rule.payout})`;
+                },
+                async load() {
+                    this.error = null;
+                    const query = this.source ? `?source=${encodeURIComponent(this.source)}` : "";
+                    const response = await fetch(`/api/configurations/${this.configurationId}/analysis${query}`);
+                    const data = await response.json();
+                    if (!response.ok) {
+                        this.analysis = null;
+                        this.error = data.error ?? `HTTP ${response.status}`;
+                        return;
+                    }
+                    this.analysis = data;
+                },
+            },
+        }).mount("#app");
+    </script>
+</body>
+
+</html>

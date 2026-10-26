@@ -11,6 +11,8 @@ load_dotenv()
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 
+MAX_NAME_LENGTH = 100
+
 # Upper limit of spins per request. Larger simulations are split into several
 # requests by the frontend, so a request never runs into Gunicorn's timeout.
 MAX_SPINS_PER_REQUEST = 10_000
@@ -42,6 +44,49 @@ def get_configuration(configuration_id):
     if configuration is None:
         return jsonify(error="configuration not found"), 404
     return jsonify(configuration)
+
+
+def _config_from_request(data):
+    """Take reel strips and paytable from a request body and validate them.
+
+    Returns the configuration dict. Raises ValueError with a readable message.
+    """
+    if not isinstance(data, dict):
+        raise ValueError("request body must be a JSON object")
+    config = {
+        "reel_strips": data.get("reel_strips"),
+        "paytable": data.get("paytable"),
+    }
+    game.validate_config(config)
+    return config
+
+
+@app.post("/api/configurations/evaluate")
+def evaluate_configuration():
+    """Calculate the theoretical values of a configuration without saving it."""
+    try:
+        config = _config_from_request(request.get_json(silent=True))
+    except ValueError as error:
+        return jsonify(error=str(error)), 400
+    return jsonify(game.theoretical_stats(config))
+
+
+@app.post("/api/configurations")
+def create_configuration():
+    """Save a new configuration (decision 0007: saved configurations are never
+    changed; editing means saving a new one)."""
+    data = request.get_json(silent=True)
+    try:
+        config = _config_from_request(data)
+    except ValueError as error:
+        return jsonify(error=str(error)), 400
+
+    name = data.get("name")
+    if not isinstance(name, str) or not 1 <= len(name.strip()) <= MAX_NAME_LENGTH:
+        return jsonify(error=f"name must have 1 to {MAX_NAME_LENGTH} characters"), 400
+
+    configuration_id = db.insert_configuration(name.strip(), config)
+    return jsonify(db.get_configuration(configuration_id)), 201
 
 
 def _is_int(value):
@@ -101,6 +146,28 @@ def create_spins():
         total_payout=sum(result["payout"] for result in results),
         spins=results,
     ), 201
+
+
+@app.get("/api/configurations/<int:configuration_id>/analysis")
+def analyse_configuration(configuration_id):
+    """Actual vs. theoretical values of the stored spins (decision 0018).
+
+    Optional filter: ?source=random.org or ?source=python (default: all spins).
+    """
+    source = request.args.get("source") or None
+    if source not in (None, rng.RANDOM_ORG, rng.PYTHON):
+        return jsonify(error="source must be 'random.org' or 'python'"), 400
+
+    configuration = db.get_configuration(configuration_id)
+    if configuration is None:
+        return jsonify(error="configuration not found"), 404
+
+    rows = db.spins_grouped_by_symbols(configuration_id, source)
+    return jsonify(
+        configuration_id=configuration_id,
+        source=source,
+        **game.analyse(configuration, rows),
+    )
 
 
 # Create the tables and the default configuration on startup (decisions 0010

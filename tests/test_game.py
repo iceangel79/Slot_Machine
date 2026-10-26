@@ -1,6 +1,7 @@
 """Unit tests for the game logic. They need no database and no network."""
 
 import copy
+import random
 from itertools import product
 
 import pytest
@@ -165,7 +166,6 @@ def test_python_stop_positions_are_within_strips():
         assert 0 <= stops[2] < 7
 
 
-
 def test_manual_stop_positions_use_random_org(monkeypatch):
     monkeypatch.setattr(rng, "random_org_stop_positions", lambda lengths: [1, 2, 3])
 
@@ -193,6 +193,7 @@ def test_unexpected_random_org_answer_is_rejected(text):
     with pytest.raises(ValueError):
         rng.parse_random_org_number(text, 20)
 
+
 # --- default configuration ---
 
 
@@ -203,3 +204,121 @@ def test_default_config_is_valid_and_favours_the_house():
 
     assert stats["rtp"] == pytest.approx(0.9098, abs=0.0001)
     assert stats["hit_frequency"] == pytest.approx(0.2835, abs=0.0001)
+
+
+def test_reel_with_30_positions_is_valid():
+    config = broken(lambda c: c["reel_strips"].__setitem__(0, ["BLANK"] * 30))
+
+    game.validate_config(config)
+
+
+def test_reel_with_31_positions_is_rejected():
+    config = broken(lambda c: c["reel_strips"].__setitem__(0, ["BLANK"] * 31))
+
+    with pytest.raises(ValueError):
+        game.validate_config(config)
+
+
+# --- analysis (decision 0018) ---
+
+
+def row(symbols, spins, payout):
+    """One row as returned by the database: spins grouped by their symbols."""
+    s1, s2, s3 = symbols
+    return {
+        "symbol_1": s1,
+        "symbol_2": s2,
+        "symbol_3": s3,
+        "spins": spins,
+        "bet": spins * game.BET,
+        "payout": payout,
+    }
+
+
+def test_analysis_counts_hits_per_rule():
+    rows = [
+        row(["SEVEN", "SEVEN", "SEVEN"], 1, 100),
+        row(["CHERRY", "CHERRY", "BLANK"], 2, 10),
+        row(["CHERRY", "BLANK", "BLANK"], 3, 6),
+        row(["BLANK", "BLANK", "BLANK"], 4, 0),
+    ]
+
+    result = game.analyse(CONFIG, rows)
+
+    assert result["spins"] == 10
+    assert result["total_bet"] == 10
+    assert result["total_payout"] == 116
+    assert [rule["hits"] for rule in result["rules"]] == [1, 0, 0, 2, 3]
+    assert result["rules"][3]["actual"] == pytest.approx(0.2)
+    assert result["hit_frequency"]["actual"] == pytest.approx(0.6)
+    assert result["rtp"]["actual"] == pytest.approx(11.6)
+
+
+def test_analysis_counts_three_cherries_only_for_the_highest_rule():
+    # Three cherries match "three of a kind CHERRY" (20) and "cherry count 3"
+    # (10); only the higher one pays (decision 0012).
+    result = game.analyse(CONFIG, [row(["CHERRY"] * 3, 5, 100)])
+
+    assert [rule["hits"] for rule in result["rules"]] == [0, 5, 0, 0, 0]
+
+
+def test_analysis_without_spins_has_no_actual_values():
+    result = game.analyse(CONFIG, [])
+
+    assert result["spins"] == 0
+    assert result["rtp"]["actual"] is None
+    assert result["rtp"]["in_range"] is None
+    assert result["rtp"]["theoretical"] == pytest.approx(
+        game.theoretical_stats(CONFIG)["rtp"]
+    )
+
+
+def test_expected_range_gets_narrower_with_more_spins():
+    low_100, high_100 = game.expected_range(0.5, 0.5, 100)
+    low_10000, high_10000 = game.expected_range(0.5, 0.5, 10_000)
+
+    # 1.96 * 0.5 / sqrt(100) = 0.098
+    assert (low_100, high_100) == pytest.approx((0.402, 0.598))
+    assert high_10000 - low_10000 == pytest.approx((high_100 - low_100) / 10)
+
+
+def test_expected_range_stays_between_0_and_1_for_frequencies():
+    low, high = game.expected_range(0.99, 0.1, 4, upper_limit=1.0)
+
+    assert low >= 0.0
+    assert high == 1.0
+
+
+def test_default_config_rtp_range_for_1000_spins():
+    # Standard deviation of the payout per spin is about 3.5 (decision 0018),
+    # so after 1000 spins the RTP lies within about 91 % +/- 21.7 %.
+    result = game.analyse(
+        game.DEFAULT_CONFIG, [row(["BLANK", "BLANK", "BLANK"], 1000, 0)]
+    )
+
+    rtp = result["rtp"]
+    assert rtp["high"] - rtp["theoretical"] == pytest.approx(0.217, abs=0.001)
+    assert rtp["actual"] == 0.0
+    assert rtp["in_range"] is False
+
+
+def test_simulated_spins_lie_within_the_expected_range():
+    # 20,000 spins with a fixed seed: the actual values match the theory.
+    generator = random.Random(42)
+
+    def seeded(strip_lengths):
+        return [generator.randrange(length) for length in strip_lengths]
+
+    grouped = {}
+    for _ in range(20_000):
+        result = game.spin(game.DEFAULT_CONFIG, seeded)
+        key = tuple(result["symbols"])
+        spins, payout = grouped.get(key, (0, 0))
+        grouped[key] = (spins + 1, payout + result["payout"])
+    rows = [row(list(key), spins, payout) for key, (spins, payout) in grouped.items()]
+
+    analysis = game.analyse(game.DEFAULT_CONFIG, rows)
+
+    assert analysis["spins"] == 20_000
+    assert analysis["rtp"]["in_range"]
+    assert analysis["hit_frequency"]["in_range"]

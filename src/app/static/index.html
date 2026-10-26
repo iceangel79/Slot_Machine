@@ -6,69 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Slot Machine Simulator</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <style>
-        body {
-            font-family: system-ui, sans-serif;
-            max-width: 40rem;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-
-        section {
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .reels {
-            display: flex;
-            gap: 0.5rem;
-            justify-content: center;
-            margin: 1rem 0;
-        }
-
-        .reel {
-            width: 5rem;
-            height: 5rem;
-            font-size: 3rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid #333;
-            border-radius: 8px;
-        }
-
-        .win {
-            color: green;
-            font-weight: bold;
-        }
-
-        .error {
-            color: #b00;
-        }
-
-        button {
-            padding: 0.4rem 1rem;
-            margin-right: 0.5rem;
-        }
-
-        label {
-            margin-right: 1rem;
-        }
-
-        input {
-            width: 6rem;
-        }
-
-        small {
-            color: #666;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
+    <script src="common.js"></script>
 </head>
 
 <body>
     <div id="app">
+        <nav><a href="index.html">Play</a><a href="configure.html">Configure</a><a href="analyse.html">Analyse</a></nav>
         <h1>Slot Machine Simulator</h1>
         <p><small>Backend: {{ health }}</small></p>
 
@@ -136,16 +80,7 @@
     <script>
         const { createApp } = Vue;
 
-        // The backend only knows symbol codes (decision 0009); the display is
-        // decided here. Blanks are shown explicitly.
-        const EMOJI = {
-            CHERRY: "🍒",
-            LEMON: "🍋",
-            BELL: "🔔",
-            BAR: "💰",
-            SEVEN: "7️⃣",
-            BLANK: "⬜",
-        };
+
         const MAX_SPINS_PER_REQUEST = 10000;
 
         const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

@@ -32,7 +32,6 @@ def check_connection():
         conn.execute("SELECT 1")
 
 
-
 def ensure_default_configuration(name, config):
     """Store the default configuration if no configuration exists yet."""
     with get_connection() as conn:
@@ -67,6 +66,23 @@ def get_configuration(configuration_id):
         ).fetchone()
 
 
+def insert_configuration(name, config):
+    """Store a new configuration and return its id.
+
+    Configurations are never changed afterwards (decision 0007).
+    """
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            INSERT INTO configurations (name, reel_strips, paytable)
+            VALUES (%s, %s, %s)
+            RETURNING id
+            """,
+            (name, Jsonb(config["reel_strips"]), Jsonb(config["paytable"])),
+        ).fetchone()
+    return row["id"]
+
+
 def insert_spins(configuration_id, results, rng_source):
     """Store spins (results of game.spin) in one transaction.
 
@@ -93,3 +109,23 @@ def insert_spins(configuration_id, results, rng_source):
                 """,
                 rows,
             )
+
+
+def spins_grouped_by_symbols(configuration_id, rng_source=None):
+    """Return the spins of one configuration, grouped by their three symbols.
+
+    At most 6 x 6 x 6 = 216 rows, independent of the number of spins
+    (decision 0018). rng_source None means all sources.
+    """
+    with get_connection() as conn:
+        return conn.execute(
+            """
+            SELECT symbol_1, symbol_2, symbol_3,
+                   COUNT(*) AS spins, SUM(bet) AS bet, SUM(payout) AS payout
+            FROM spins
+            WHERE configuration_id = %s
+              AND (%s::text IS NULL OR rng_source = %s)
+            GROUP BY symbol_1, symbol_2, symbol_3
+            """,
+            (configuration_id, rng_source, rng_source),
+        ).fetchall()

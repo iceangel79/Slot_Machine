@@ -182,7 +182,102 @@ Test:
 * Gespeicherte Spins inkl. `rng_source` manuell in der Neon Console geprüft.
 
 
+---
+
+Schritt 9: Feature Konfigurieren
+
+Offene Punkte vorab mit Claude geklärt und als Decisions festgehalten:
+
+* 0016 Konfigurations-Editor:
+  * Die Walzen werden als Anzahl Positionen pro Symbol und Walze in einem Raster
+    (6 Symbole × 3 Walzen) erfasst, nicht als geordnete Liste. Bei einer
+    Gewinnlinie und gleich wahrscheinlichen Stopps hat die Reihenfolge auf der
+    Walze keinen Einfluss auf die Wahrscheinlichkeiten. Backend und DB bleiben
+    unverändert, gespeichert wird weiterhin die Liste.
+  * Der Editor startet immer als Kopie einer bestehenden Konfiguration und
+    speichert als neue Konfiguration (passt zu den unveränderlichen
+    Konfigurationen aus 0007).
+  * Die theoretischen Werte (RTP, Trefferquote, Wahrscheinlichkeit pro Regel)
+    berechnet das Backend live über `POST /api/configurations/evaluate`, jeweils
+    300 ms nach der letzten Änderung (Debounce). Keine Berechnung in
+    JavaScript, damit Theorie und Spiel dieselbe Funktion verwenden.
+  * Eine Seite pro Feature (`index.html`, `configure.html`, später
+    `analyse.html`) mit Navigation. Gemeinsame Styles in `style.css`, die
+    Emoji-Tabelle in `common.js`.
+* 0017 Walzenlänge: maximal 30 Positionen. Begründung mit den klassischen
+  Vegas-Automaten: Die ersten Automaten um 1900 hatten etwa 10 Symbole pro
+  Walze, später waren 20 und ab den 1960er-Jahren meist 22 Stopps üblich.
+  Mehr ging mechanisch nicht. Erst virtuelle Walzen ab den 1980er-Jahren
+  erlaubten mehr Positionen (bei uns out of scope). Die Länge macht die
+  Konfiguration übrigens nicht aufwendiger: Erfasst wird nur die Anzahl pro
+  Symbol, und die Berechnung prüft immer höchstens 216 Kombinationen.
+
+Weitere Regeln: Name ist Pflicht (max. 100 Zeichen). Ein RTP über 100 % darf
+gespeichert werden, der Editor zeigt aber eine Warnung. Konfigurationen können
+nicht gelöscht werden, weil Spins darauf verweisen.
+
+Umgesetzt (Entwürfe von Claude, selbst eingebaut und committed):
+
+* Begrenzung der Walzenlänge in `validate_config()`.
+* Endpoints `POST /api/configurations/evaluate` und `POST /api/configurations`.
+* Gemeinsame `style.css` und `common.js`, Navigation auf allen Seiten.
+* Editor-Seite `configure.html`.
+* 56 Tests.
+
+Erkenntnisse:
+
+* Die Umrechnung zwischen Liste und Anzahl pro Symbol passiert nur im Frontend
+  (`countSymbols()` beim Laden, `buildStrip()` beim Senden).
+* Vorher in der CI ein roter Lauf: Die Zeile mit dem User-Agent für random.org
+  war mit meiner E-Mail-Adresse länger als 88 Zeichen (ruff E501). Korrigiert.
+* Fehler beim Einbauen: Den `<link>` zur CSS-Datei und das `<script>` für
+  `common.js` hatte ich innerhalb von `<style>` platziert. Der Browser liest
+  dort alles als CSS-Text und ignoriert die Tags, darum fehlten Styles und die
+  Emoji-Tabelle (`EMOJI is not defined`). Zusätzlich hiess die Datei
+  `styles.css` statt `style.css`. Beides korrigiert. Lehre: Bei Problemen im
+  Frontend zuerst die Browser-Konsole (F12) anschauen.
 
 
 
+---
+
+Schritt 10: Feature Auswerten
+
+Offene Punkte vorab mit Claude geklärt und als Decision 0018 festgehalten:
+
+* Treffer pro Regel: Die Tabelle `spins` speichert keine Gewinnregel (0012).
+  Die DB gruppiert die Spins deshalb nach den drei Symbolen (`GROUP BY`), das
+  ergibt höchstens 6 × 6 × 6 = 216 Zeilen, egal wie viele Spins es sind. Python
+  wertet jede Gruppe einmal mit `game.evaluate()` aus. Gleiches Prinzip wie bei
+  den theoretischen Werten: Theorie und Auswertung verwenden dieselbe Funktion.
+* Zufallsquelle: optionaler Filter `?source=random.org|python`, im GUI als
+  Dropdown. Damit ist das Follow-up aus 0008 erledigt.
+* Normale Schwankung: Pro Wert ein erwarteter Bereich (95 %), also Sollwert
+  ± 1.96 Standardfehler. Werte ausserhalb werden mit ✗ markiert. Für den RTP
+  wird die Standardabweichung der Auszahlung pro Spin exakt aus den
+  Regelwahrscheinlichkeiten berechnet. Bei der Default-Konfiguration ist sie
+  rund 3.5: Nach 1'000 Spins liegt der RTP mit 95 % zwischen etwa 69 % und
+  113 %, erst nach 1 Mio. Spins ist der Bereich ± 0.7 %. Der Jackpot (drei
+  Sieben, etwa 1 von 8'000) macht den RTP stark schwankend.
+* Keine Grafik: Die Tabelle erfüllt F4 vollständig. Eine Konvergenzkurve
+  (Ist-RTP über die Anzahl Spins) wäre eine mögliche Erweiterung für die
+  Präsentation.
+
+Umgesetzt (Entwürfe von Claude, selbst eingebaut und committed):
+
+* `game.analyse()` als reine Funktion ohne DB, mit Unittests.
+* Query `db.spins_grouped_by_symbols()` und Index auf
+  `spins (configuration_id)`. Postgres legt für Foreign Keys keinen Index
+  automatisch an.
+* Endpoint `GET /api/configurations/<id>/analysis`.
+* Seite `analyse.html`, Navigation auf allen drei Seiten.
+* 67 Tests.
+
+Erkenntnisse:
+
+* Zuerst nur 40 Tests grün: Ich hatte nur `tests/test_game.py` gestartet.
+  Mit `uv run pytest` laufen alle 67 Tests inkl. API-Tests.
+* Bei 95 % liegt auch bei korrektem Zufall etwa jeder 20. Wert ausserhalb des
+  Bereichs. Ein einzelnes ✗ ist also noch kein Fehler.
+* gegen Ende des Projektes, wurde es zunehmend schwieriger die Zusammenhänge und Änderungen am Code zu verstehen (was von Claude vorgeschlagen wurde)
 
