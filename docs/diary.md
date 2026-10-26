@@ -103,7 +103,7 @@ Testing auf Render.com mit autodeploy war ebenfalls erfolgreich!
 
 Continuous Integration (Schritt 6): GitHub Actions mit Linter (ruff) und Tests (pytest). Es wurden Tests für die Endpunkte und Tests für die Datenbankanbindung erstellt. Die Tests wurden erfolgreich durchgeführt.
 Bewusster Fehler eingebaut, "assert b"Slot Machine Simulator" in response.data" geändert auf "assert b"Fehler" in response.data". Dies führte zu einem fehlerhaften Testresultat.
-im Anschluss korrigiert und "assert b"Fehler" in response.data" geändert auf "assert b"Fehler" in response.data" .
+im Anschluss korrigiert und "assert b"Fehler" in response.data" geändert auf "assert b"Slot Machine Simulator" in response.data" .
 verstanden, dass ci.yml automatische tests nach dem commit auf github durchführt. dies dient vor allem auch dazu, dass wenn verschiedene personen an etwas arbeiten, diese nicht unwissentlich fehlerhafte Code teile ins Hauptsystem bringen.
 
 Fazit zu Schritt 6: Es gibt aktuell zwei Tests, einen für die Startseite und einen für den Health-Check inklusive DB-Verbindung. 
@@ -281,3 +281,27 @@ Erkenntnisse:
   Bereichs. Ein einzelnes ✗ ist also noch kein Fehler.
 * gegen Ende des Projektes, wurde es zunehmend schwieriger die Zusammenhänge und Änderungen am Code zu verstehen (was von Claude vorgeschlagen wurde)
 
+---
+
+## 26.10.2026
+
+Schritt 11: Abschluss
+
+Gesamte Doku mit Claude gegen den Code und die Aufgabenstellung geprüft. Gefunden
+und korrigiert:
+
+* CI war nach dem letzten Commit rot (doppelte Imports, ruff). Mit `ruff check --fix`
+  und `ruff format` behoben.
+* Reste aus dem Kurs-Template entfernt (MANUAL.md, Azure-Anleitung,
+  agent-collaboration.md, Projektname in pyproject.toml, black).
+* README komplett neu: Ziel, Features, Architektur, lokale Installation, Tests,
+  Deployment, Link zur Live-App, alle Decisions.
+* architecture.md: Deployment/CI-Diagramm und Diagramm «Theorie und Praxis» ergänzt,
+  Sequenzdiagramm auf einen Request pro Walze korrigiert.
+* Widersprüche in den Decisions bereinigt (0001, 0011) und Verweise auf spätere
+  Decisions ergänzt (0002, 0004, 0018).
+* Konvergenzkurve aus 0018 bewusst weggelassen.
+* 10 zusätzliche Tests (77), Coverage 99 %.
+
+Erkenntnis: Doku veraltet unbemerkt, wenn sie nicht zusammen mit dem Code nachgeführt
+wird. Ein Review am Schluss deckt viel auf, besser wäre es pro Schritt.
