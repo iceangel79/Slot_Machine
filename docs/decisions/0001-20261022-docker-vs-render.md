@@ -1,4 +1,4 @@
-# Decision Docker vs Render.com
+# Docker and Render.com for Hosting
 
 Date: 2026-10-22
 
@@ -8,23 +8,37 @@ Accepted
 
 ## Context
 
-Decision needs to be made, wheter to use docker and/or render.com to host the application.
+The application must be reachable under a public URL until the end of the
+exam session and must be deployed automatically. The decision is whether to
+use Docker, a hosting platform such as Render.com, or both. The course
+template already contains a `Dockerfile`.
 
 ## Options Considered
 
- * Option 1: Docker and Render.com or any other service for that matter.
- * Option 2: Only render.com or any other service for that matter.
- * Option 3: Only docker (locally hosted).
+ * Option 1: Docker together with a hosting platform (Render.com). The same
+   image runs locally and in production.
+ * Option 2: Render.com without Docker (native Python runtime). One tool less,
+   but local and production environments may differ.
+ * Option 3: Docker only, hosted on an own machine. No public URL without
+   additional effort.
 
 ## Decision
 
-Use docker together with render.com, since the dockerfile is already provided with the template and can be used without modifications.
+Option 1: Render.com builds and runs the `Dockerfile` from the repository and
+deploys automatically on every push.
 
 ## Reasons
 
-The advantage of Docker to run the same version of the application on different environments is useful in case you want to use Docker Desktop locally to test the application. Render.com is a Platform as a Service (PaaS) which simplifies the deployment process. It also provides a free tier which is sufficient for our needs. Furthermore, Render.com is a modern platform which is easy to use and provides a good developer experience.
+Docker runs the same version of the application in every environment and can
+be tested locally with Docker Desktop. Render.com is a Platform as a Service
+(PaaS) that simplifies deployment, connects directly to the GitHub repository
+and offers a free tier that is sufficient for this project.
 
 ## Consequences
 
-In case the software would be further developed it is already containerized and can be deployed on other services too.
-However, the dockerfile provided with the template needs to be adapted to the needs of the application.
+ * Easier: Automatic deployment on every push; the application is already
+   containerised and could be moved to another platform.
+ * Harder: The `Dockerfile` of the template had to be adapted to the
+   application (start command, later `app.main:app`, decision 0012).
+ * Risk: The free tier sleeps without traffic; the first request then takes
+   about a minute.

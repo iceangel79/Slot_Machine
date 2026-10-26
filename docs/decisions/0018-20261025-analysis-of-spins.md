@@ -105,5 +105,6 @@ completely; a chart is not required.
  * Note: PostgreSQL does not create an index for a foreign key
    automatically. `CREATE INDEX IF NOT EXISTS` in `schema.sql` adds it to
    existing databases at the next start (decision 0010).
- * Follow-up: Option D3 (RTP convergence chart) is a possible extension for
-   the presentation in step 11.
+ * Option D3 (RTP convergence chart) was considered again in step 11 and
+   left out: the table with the expected range shows the same effect, and the
+   chart would add a JavaScript library and a new query.

@@ -1,64 +1,106 @@
 # Slot Machine Simulator
 
-A web application that simulates a classic three-reel Las Vegas slot machine with a freely configurable setup (symbols, reel strips, and paytable combinations). The application provides an interactive game interface to execute single manual spins or automated spins, with every spin recorded in a persistent database. An integrated analysis dashboard evaluates collected spin data, comparing configured theoretical probabilities and Return to Player (RTP) ratios against actual empirical hit rates and payout statistics.
+A web application that simulates a classic three-reel Las Vegas slot machine.
+The machine is freely configurable (reel strips and paytable), every spin is
+stored in a database, and an analysis view compares the configured
+(theoretical) probabilities and Return to Player (RTP) with the results
+actually achieved.
+
+**Live app:** <https://slot-machine-nlsl.onrender.com/>
+
+The app runs on the Render free tier. After a period without traffic the
+service sleeps; the first request then takes about a minute.
+
+SWEN project, MSc Business Informatics, FFHS, autumn semester 2026.
 
 ---
 
-## Table of Contents
+## Contents
 
+- [Goal](#goal)
 - [Features](#features)
-- [Architecture & Tech Stack](#architecture--tech-stack)
-- [Get Started](#get-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Environment Configuration](#environment-configuration)
-  - [Running Locally](#running-locally)
-- [Local Deployment with Docker](#local-deployment-with-docker)
-- [Understanding the Architecture & Concepts](#understanding-the-architecture--concepts)
-  - [Domain Model & Mechanics](#domain-model--mechanics)
-  - [Immutable, Versioned Configurations](#immutable-versioned-configurations)
-  - [Dual Random Number Generation (RNG) Strategy](#dual-random-number-generation-rng-strategy)
-  - [Separation of Concerns](#separation-of-concerns)
-- [Architecture Decision Records (ADRs)](#architecture-decision-records-adrs)
-- [Testing & Code Quality](#testing--code-quality)
+- [Architecture](#architecture)
+- [Tech stack](#tech-stack)
+- [Run locally](#run-locally)
+- [Tests and CI](#tests-and-ci)
+- [Deployment](#deployment)
+- [Project structure](#project-structure)
+- [Documentation](#documentation)
 
 ---
+
+## Goal
+
+A slot machine is a simple game with an exactly calculable outcome: the reel
+strips and the paytable define how much the machine pays back in the long run
+(RTP). The application makes this visible. You configure a machine, see its
+theoretical RTP and hit frequency while editing, play it manually or simulate
+thousands of spins, and then check whether practice matches theory.
+
+Details: [docs/requirements.md](docs/requirements.md).
 
 ## Features
 
-- **Interactive Play (F1):** Run manual single spins with visual display of reel stops and calculated payouts. Each spin records the exact outcome, bet, payout, and RNG source.
-- **Autospin & Mass Simulation (F2):** Run continuous spins with visual feedback or execute high-volume batch simulations directly in the backend to rapidly gather empirical data.
-- **Dynamic Configuration (F3):** Freely define reel strips (including explicit blanks) and paytable winning combinations (three-of-a-kind and cherry counts). Live theoretical odds, hit frequency, and RTP are calculated and previewed before saving.
-- **Statistical Analysis (F4):** Inspect stored spin results per configuration, contrasting theoretical expectations with actual outcomes (total bet/payout, RTP, hit frequency, and hit rates per paytable rule).
-
----
-
-## Architecture & Tech Stack
-
-| Layer | Technology | Details |
+| | Feature | Page |
 |---|---|---|
-| **Backend** | Python 3.13+ / Flask | Lightweight REST API and static file server; game logic kept in a framework-independent core module. |
-| **WSGI Server** | Gunicorn / Waitress | Gunicorn for production/Linux; Waitress for local Windows execution. |
-| **Frontend** | Vue 3 (via CDN) | Reactive Single-Page Application loaded without a build step or Node.js tooling. |
-| **Database** | PostgreSQL on Neon | Managed serverless PostgreSQL persistent across deployments and app restarts. |
-| **External Service** | random.org API | Atmospheric noise RNG for single manual spins, with graceful local fallback. |
-| **Package Manager** | `uv` | Fast, deterministic Python package management and virtual environment tool. |
-| **Containerization** | Docker | Container runtime using `python:3.13-slim` base image. |
-| **Hosting & CI/CD** | Render.com | Automated cloud deployment directly connected to GitHub repository commits. |
+| F1 | **Play:** single manual spin. The random numbers come from the external web service [random.org](https://www.random.org); if it is not reachable, Python is used instead. The source is stored per spin. | Play |
+| F2 | **Autospin and mass simulation:** autospin plays spins one after another with a visible delay; the mass simulation runs any number of spins in the backend (at most 10,000 per request, the frontend splits larger runs). Both use Python's random generator. | Play |
+| F3 | **Configure:** edit the number of positions per symbol on each of the three reels (at most 30 per reel) and the paytable (three of a kind, cherry count). Theoretical RTP, hit frequency and probability per rule are updated live. Saving always creates a new, immutable configuration. | Configure |
+| F4 | **Analyse:** for one configuration, compare actual and theoretical RTP, hit frequency and hits per rule, optionally filtered by random source. Each value shows a 95 % expected range, so you can tell normal fluctuation from a real deviation. | Analyse |
 
----
+## Architecture
 
-## Get Started
+```mermaid
+flowchart LR
+    user([Browser])
+    subgraph render["Render (Docker, Gunicorn)"]
+        frontend["Frontend<br/>3 HTML pages, Vue 3 via CDN"]
+        backend["Python backend<br/>Flask"]
+    end
+    neon[("PostgreSQL<br/>Neon")]
+    randomorg["random.org<br/>external web service"]
 
-### Prerequisites
+    user -- HTTP --> frontend
+    frontend -- "HTTP / JSON" --> backend
+    backend -- SQL --> neon
+    backend -- "HTTP (manual spins)" --> randomorg
+```
 
-- **Python:** Version 3.13 or newer
-- **uv:** Fast Python package manager ([Astral uv documentation](https://docs.astral.sh/uv/))
-- **PostgreSQL Database:** Connection string to a PostgreSQL instance (e.g., free tier on [Neon](https://neon.tech))
+Key ideas:
 
-### Installation
+- **Game logic in plain Python** (`src/app/game.py`), without Flask or
+  database, fully unit tested.
+- **Theory and practice use the same function.** The theoretical values are
+  not calculated with formulas: all symbol combinations (at most
+  6 x 6 x 6 = 216) are evaluated with the same `evaluate()` function used
+  when playing. The analysis lets the database group the spins by their three
+  symbols and evaluates each group with `evaluate()` as well, so it stays fast
+  with any number of spins.
+- **Immutable configurations:** every spin references the configuration it
+  was played with; editing creates a new configuration.
+- **Symbol codes in the backend** (`CHERRY`, `BAR`, ...), emoji only in the
+  frontend.
 
-Clone the repository and set up the virtual environment with all required dependencies using `uv`:
+More diagrams (components, data model, API, sequences):
+[docs/architecture.md](docs/architecture.md).
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Backend | Python 3.13, Flask, Gunicorn (Waitress for local use on Windows) |
+| Frontend | Vue 3 via CDN, no build step; plain CSS |
+| Database | PostgreSQL on Neon, plain SQL with `psycopg` (no ORM) |
+| External web service | random.org (HTTP interface, no API key) |
+| Packages | `uv`, dependencies in `pyproject.toml` / `uv.lock` |
+| Tests and linting | `pytest`, `pytest-cov`, `ruff` |
+| CI | GitHub Actions |
+| Deployment | Docker image on Render, automatic on every push |
+
+## Run locally
+
+Prerequisites: Python 3.13+, [uv](https://docs.astral.sh/uv/) and a
+PostgreSQL database (e.g. a free one on [Neon](https://neon.tech)).
 
 ```bash
 git clone https://github.com/iceangel79/Slot_Machine.git
@@ -66,107 +108,105 @@ cd Slot_Machine
 uv sync
 ```
 
-### Environment Configuration
-
-The application requires a PostgreSQL database connection string. Create a local `.env` file in the project root (never committed to git):
+Create a file `.env` in the project root (it is ignored by Git):
 
 ```env
 DATABASE_URL=postgresql://<user>:<password>@<host>/<dbname>?sslmode=require
 ```
 
-### Running Locally
+Start the application:
 
-Activate the environment and launch the WSGI server:
+```bash
+# Linux / macOS
+uv run gunicorn --bind 127.0.0.1:8000 app.main:app
 
-- **On Linux / macOS:**
-  ```bash
-  uv run gunicorn --bind 127.0.0.1:8000 app.main:app
+# Windows
+uv run waitress-serve --port=8000 app.main:app
+```
+
+Open <http://localhost:8000>. On the first start the application creates the
+tables and a default configuration "Classic (default)" (RTP 91.0 %).
+
+With Docker instead:
+
+```bash
+docker build -t slot-machine .
+docker run -p 8000:8000 -e DATABASE_URL="postgresql://..." slot-machine
+```
+
+## Tests and CI
+
+```bash
+uv run pytest            # tests with coverage report
+uv run ruff check        # linter
+uv run ruff format       # formatter
+```
+
+- **Game logic tests** (`tests/test_game.py`) need no database and no
+  network. random.org is never called; tests replace it with `monkeypatch`.
+- **API tests** (`tests/test_api.py`) need a separate test database. Add its
+  connection string to `.env`:
+
+  ```env
+  TEST_DATABASE_URL=postgresql://...   # e.g. a Neon branch "test"
   ```
 
-- **On Windows:**
-  ```powershell
-  uv run waitress-serve --port=8000 app.main:app
-  ```
+  Without `TEST_DATABASE_URL` the API tests are skipped (the pytest header
+  says so), so they can never write into the production database.
+- **CI:** GitHub Actions (`.github/workflows/ci.yml`) runs `ruff check` and
+  `pytest` on every push and pull request, with a fresh PostgreSQL service
+  container as test database.
 
-Open your browser and navigate to `http://localhost:8000`.
+## Deployment
 
----
+Render builds the `Dockerfile` and deploys automatically on every push to
+GitHub. The only setting is the environment variable `DATABASE_URL`
+(the Neon production branch). Tables and the default configuration are
+created at startup, so a new database needs no manual setup.
 
-## Local Deployment with Docker
+Note: Render deploys independently of the CI result.
 
-To build and test the application in an isolated container environment matching production:
+## Project structure
 
-1. **Build the Docker image:**
-   ```bash
-   docker build -t slot-machine .
-   ```
+```text
+src/app/
+  main.py        Flask app: JSON API and static files
+  game.py        game logic: spin, paytable, theoretical values, analysis
+  rng.py         random sources: random.org with fallback, Python
+  db.py          database access (plain SQL)
+  schema.sql     tables and index, executed at startup
+  static/        frontend: index.html (play), configure.html, analyse.html,
+                 common.js (emoji table), style.css
+tests/           pytest: game logic and API
+docs/            requirements, architecture, decisions, diary
+```
 
-2. **Run the container:**
-   ```bash
-   docker run -p 8000:8000 -e DATABASE_URL="postgresql://<user>:<password>@<host>/<dbname>?sslmode=require" slot-machine
-   ```
+More: [docs/directories.md](docs/directories.md).
 
-3. Open `http://localhost:8000` in your web browser.
+## Documentation
 
----
+- [Requirements](docs/requirements.md)
+- [Architecture](docs/architecture.md)
+- [Decision records](docs/decisions/):
+  - [0001 Docker and Render](docs/decisions/0001-20261022-docker-vs-render.md)
+  - [0002 Tech stack](docs/decisions/0002-20261024-tech.md)
+  - [0003 Documentation conventions](docs/decisions/0003-20261024-documentation-conventions.md)
+  - [0004 Backend framework: Flask](docs/decisions/0004-20261024-backend-framework-flask.md)
+  - [0005 Frontend: Vue 3 via CDN](docs/decisions/0005-20261024-frontend-vue-via-cdn.md)
+  - [0006 Database: PostgreSQL on Neon](docs/decisions/0006-20261024-database-postgres-on-neon.md)
+  - [0007 Immutable, versioned configurations](docs/decisions/0007-20261024-immutable-versioned-configurations.md)
+  - [0008 Random number sources](docs/decisions/0008-20261024-random-number-sources.md)
+  - [0009 Symbol codes and emoji display](docs/decisions/0009-20261024-symbol-codes-and-emoji-display.md)
+  - [0010 Database access: plain SQL](docs/decisions/0010-20261025-database-access-plain-sql.md)
+  - [0011 CI with GitHub Actions](docs/decisions/0011-20261025-ci-with-github-actions.md)
+  - [0012 Game logic and paytable rules](docs/decisions/0012-20261025-game-logic-and-paytable-rules.md)
+  - [0013 Default configuration](docs/decisions/0013-20261025-default-configuration.md)
+  - [0014 Access to random.org](docs/decisions/0014-20261025-random-org-access.md)
+  - [0015 Separate test database](docs/decisions/0015-20261025-separate-test-database.md)
+  - [0016 Configuration editor](docs/decisions/0016-20261025-configuration-editor.md)
+  - [0017 Maximum reel length](docs/decisions/0017-20261025-maximum-reel-length.md)
+  - [0018 Analysis of spins](docs/decisions/0018-20261025-analysis-of-spins.md)
+- [Development diary](docs/diary.md) (German)
 
-## Understanding the Architecture & Concepts
-
-### Domain Model & Mechanics
-
-The game simulates a classic mechanical three-reel Las Vegas slot machine with a single center payline:
-- **Symbols:** Represented by canonical codes in the backend (`CHERRY`, `LEMON`, `BELL`, `BAR`, `SEVEN`, `BLANK`). Blanks are treated as physical stops on the reel strips.
-- **Reel Strips:** Each of the 3 reels has an ordered sequence of symbols. Symbol frequency on the strip directly determines stop probability.
-- **Payline & Paytable:** The center row forms the evaluation line. Winning conditions include three-of-a-kind (e.g., `SEVEN SEVEN SEVEN`) and cherry-count combinations (e.g., 1 or 2 cherries anywhere on the payline).
-- **RTP & Hit Frequency:** Return to Player (expected payout per unit wagered) and hit frequency are calculated analytically from the reel strips and paytable before spins take place.
-
-### Immutable, Versioned Configurations
-
-To ensure absolute statistical integrity, configurations are **immutable**:
-- Whenever a user edits reel strips or paytables, the backend creates a new configuration entry (`configuration_id`).
-- Every spin references its specific `configuration_id`.
-- This ensures that historical spins are always evaluated against the exact mathematical odds under which they were generated, even after subsequent rules or reel strips change.
-
-### Dual Random Number Generation (RNG) Strategy
-
-The simulator implements a hybrid RNG architecture balancing true randomness with API quotas:
-1. **Single Manual Spins:** Query the external [random.org](https://www.random.org) API for genuine atmospheric noise randomness.
-2. **Resilient Fallback:** If `random.org` encounters network latency, rate limits, or downtime, the backend automatically falls back to Python's cryptographically secure pseudo-random number generator (`secrets` / `os.urandom`). The source is recorded per spin (`rng_source`).
-3. **Autospin & Mass Simulation:** High-volume automated spins exclusively use Python's internal generator to prevent quota exhaustion and provide high throughput.
-
-### Separation of Concerns
-
-- **Decoupled Core Logic:** All slot calculation rules (reel stopping, payline evaluation, theoretical probability formulas, RTP calculation) reside in a pure Python domain module, fully decoupled from Flask and tested with unit tests.
-- **API-Driven Presentation:** The backend operates exclusively with canonical symbol codes. The frontend maps codes to visual representations (emoji for the MVP). This allows alternative frontends to connect without modifying backend or database schemas.
-- **Zero-Build Frontend:** Vue 3 is included via CDN directly in static templates, providing dynamic reactivity for configuration updates and live statistics without requiring Node.js build tooling.
-
----
-
-## Architecture Decision Records (ADRs)
-
-Key architectural and technological choices are documented in `docs/decisions/`:
-
-- [ADR 0001: Docker vs. Render.com Deployment](docs/decisions/0001-20261022-docker_vs_render.md)
-- [ADR 0002: Base Tech-Stack Selection](docs/decisions/0002-20261024-tech.md)
-- [ADR 0003: Documentation Language & Decision Record Conventions](docs/decisions/0003-20261024-documentation-conventions.md)
-- [ADR 0004: Backend Framework: Flask](docs/decisions/0004-20261024-backend-framework-flask.md)
-- [ADR 0005: Frontend Architecture: Vue 3 via CDN](docs/decisions/0005-20261024-frontend-vue-via-cdn.md)
-- [ADR 0006: Database Selection: PostgreSQL on Neon](docs/decisions/0006-20261024-database-postgres-on-neon.md)
-- [ADR 0007: Immutable, Versioned Configurations](docs/decisions/0007-20261024-immutable-versioned-configurations.md)
-- [ADR 0008: Random Number Sources: random.org & Python](docs/decisions/0008-20261024-random-number-sources.md)
-- [ADR 0009: Symbol Codes & Frontend Emoji Representation](docs/decisions/0009-20261024-symbol-codes-and-emoji-display.md)
-
----
-
-## Testing & Code Quality
-
-- **Test Suite:** Executed with `pytest` and test coverage reporting via `pytest-cov`:
-  ```bash
-  uv run pytest
-  ```
-- **Linting & Formatting:** Managed with `ruff`:
-  ```bash
-  uv run ruff check
-  uv run ruff format
-  ```
-
+AI assistance (Claude, Anthropic) was used for planning, reviews and code
+drafts; this is declared in the diary.

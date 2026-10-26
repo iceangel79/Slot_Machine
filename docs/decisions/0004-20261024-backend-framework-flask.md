@@ -39,3 +39,5 @@ problems and leaves more time for the actual slot machine logic.
  * Harder: Input validation and API documentation must be done by hand.
  * Follow-up: `src/app/__init__.py` exposes a Flask object named `app`; the
    `Dockerfile` start command is changed from `app.hello:app` to `app:app`.
+   Changed by decision 0012: the Flask application moved to `app/main.py`,
+   Gunicorn starts `app.main:app`.

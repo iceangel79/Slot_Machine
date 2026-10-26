@@ -8,10 +8,10 @@ Accepted
 
 ## Context
 
-The assignment requires that the software is checked automatically with every
-commit, for example with tests and linters. Deployment to Render already
-happens automatically on every push (decision 0001), but nothing checks the
-code before or alongside it.
+The assignment requires automatic deployment, which Render already does on
+every push (decision 0001), and unit tests that can be run. Nothing checks the
+code automatically before or alongside the deployment. Continuous integration
+is one of the development methods of the module.
 
 The project uses `ruff` as linter and `pytest` for tests (both already defined
 in `pyproject.toml`). The first test checks the endpoint `/api/health`. When
@@ -57,6 +57,7 @@ Python, no database) run in the same pipeline without any extra setup.
  * Risk: Later tests that write data (e.g. spins) would write into the Neon
    database when run locally. This must be addressed before such tests are
    added, e.g. with a separate Neon branch or a local test database.
+   Resolved by decision 0015 (Neon branch `test`, `TEST_DATABASE_URL`).
  * Note: Render deploys independently of the pipeline result. A failing
    pipeline does not stop a deployment.
  * Follow-up: Workflow in `.github/workflows/ci.yml`, first tests in

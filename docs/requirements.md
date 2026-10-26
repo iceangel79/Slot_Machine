@@ -1,6 +1,6 @@
 # Requirements
 
-Date: 2026-10-24
+Date: 2026-10-24, updated 2026-10-26
 
 This document describes the scope of the Slot Machine Simulator (MVP). It was
 worked out in a requirements session supported by an AI assistant (Claude,
@@ -46,13 +46,18 @@ ratio with the results actually achieved.
  * **Mass simulation:** A large number of spins executed at once in the
    backend, without animation.
  * Both use Python's random number generator (no random.org quota issues).
+ * One request executes at most 10,000 spins; the frontend splits larger mass
+   simulations into several requests.
 
 ### F3 Configure
 
- * A configuration consists of three reel strips and a paytable.
+ * A configuration consists of a name, three reel strips (1 to 30 positions
+   each, decision 0017) and a paytable.
  * Supported paytable rule types (MVP):
-    * (a) three of a kind, e.g. `SEVEN SEVEN SEVEN` pays 100x
-    * (c) cherry count, e.g. one cherry anywhere pays 2x, two cherries 5x
+    * three of a kind, e.g. `SEVEN SEVEN SEVEN` pays 100x
+    * cherry count, e.g. exactly one cherry anywhere pays 2x, two cherries 5x
+ * If several rules match, only the one with the highest payout pays
+   (decision 0012).
  * The theoretical probabilities, hit frequency and RTP are calculated and
    shown while editing, before saving.
  * Saved configurations are immutable. Changing a configuration creates a new
@@ -66,12 +71,18 @@ ratio with the results actually achieved.
     * actual vs. theoretical RTP
     * actual vs. theoretical hit frequency
     * actual vs. theoretical frequency per winning rule
+ * Optionally only the spins of one random source (random.org or Python).
+ * Each comparison shows the range in which the actual value lies with 95 %
+   probability, so normal fluctuation can be told apart from a real deviation
+   (decision 0018).
 
-## Data (first draft)
+## Data
 
  * `configurations`: id, name, created_at, reel strips, paytable
  * `spins`: id, configuration_id, created_at, symbols (3 codes), bet, payout,
    rng_source (`random.org` or `python`)
+
+Details: data model in `docs/architecture.md`.
 
 ## Out of scope (MVP)
 
@@ -79,6 +90,8 @@ ratio with the results actually achieved.
  * More than three reels or more than one payline
  * Paytable rule type "any bar" and other mixed combinations
  * Virtual reel mapping (weighted stop tables) as used in modern machines
+ * Deleting configurations (spins refer to them)
+ * Charts in the analysis (decision 0018)
 
 ## Non-functional requirements
 
